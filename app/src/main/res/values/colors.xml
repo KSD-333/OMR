@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Base Canvas Colors -->
+    <color name="black">#FF000000</color>
+    <color name="white">#FFFFFFFF</color>
+    
+    <!-- Dark Theme Colors -->
+    <color name="bg_dark">#09090B</color>
+    <color name="bg_dark_card">#18181B</color>
+    <color name="bg_dark_input">#27272A</color>
+    <color name="border_dark">#3F3F46</color>
+    
+    <!-- Text Colors -->
+    <color name="text_primary">#F4F4F5</color>
+    <color name="text_secondary">#A1A1AA</color>
+    <color name="text_muted">#71717A</color>
+    
+    <!-- Page Specific Dynamic Accent Colors -->
+    <color name="color_page_1">#2196F3</color> <!-- Blue -->
+    <color name="color_page_1_bg">#1A2196F3</color> <!-- 10% Blue opacity -->
+    
+    <color name="color_page_2">#00BFA5</color> <!-- Teal -->
+    <color name="color_page_2_bg">#1A00BFA5</color> <!-- 10% Teal opacity -->
+    
+    <color name="color_page_3">#FFB300</color> <!-- Amber -->
+    <color name="color_page_3_bg">#1AFFB300</color> <!-- 10% Amber opacity -->
+    
+    <color name="color_page_4">#9C27B0</color> <!-- Purple -->
+    <color name="color_page_4_bg">#1A9C27B0</color> <!-- 10% Purple opacity -->
+    
+    <!-- Auth Page Accent (Indigo/Blue) -->
+    <color name="color_auth_primary">#4F46E5</color>
+    <color name="color_auth_primary_bg">#1A4F46E5</color>
+    
+    <!-- Feedback Colors -->
+    <color name="color_error">#EF4444</color>
+    <color name="color_success">#10B981</color>
+
+    <!-- Redesigned Dashboard Specific Colors -->
+    <color name="dashboard_card_blue">#1B75D0</color>
+    <color name="dashboard_card_teal">#009688</color>
+    <color name="dashboard_card_maroon">#5A2E36</color>
+    <color name="dashboard_card_slate">#3E3E42</color>
+    <color name="bottom_nav_selected_bg">#1A00BFA5</color> <!-- Light Teal capsule bg -->
+</resources>

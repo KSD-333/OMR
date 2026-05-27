@@ -1,0 +1,14 @@
+<resources>
+    <string name="app_name">OMR Scanner</string>
+    <string name="profile_initial">E</string>
+    <string name="welcome_educator">Welcome, Educator!</string>
+    <string name="hint_school_name">Enter High School Name</string>
+    <string name="nav_home">Home</string>
+    <string name="nav_generator">Generator</string>
+    <string name="nav_keys">Keys</string>
+    <string name="nav_scanner">Scanner</string>
+    <string name="nav_results">Results</string>
+    <string name="step_3_desc">Use the camera for live grading or batch-process uploaded images.</string>
+    <string name="step_4_title">View &amp; Export</string>
+    <string name="step_4_desc">Review annotated results and export as CSV, PDF, or ZIP.</string>
+</resources>

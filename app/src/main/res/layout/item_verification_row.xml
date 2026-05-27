@@ -1,0 +1,139 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="8dp"
+    app:cardCornerRadius="8dp"
+    app:cardElevation="0dp"
+    app:cardBackgroundColor="#18181B">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="52dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingHorizontal="14dp">
+
+        <!-- Question index -->
+        <TextView
+            android:id="@+id/txtVerifyQNum"
+            android:layout_width="38dp"
+            android:layout_height="wrap_content"
+            android:text="Q15"
+            android:textColor="@color/text_primary"
+            android:textSize="13sp"
+            android:textStyle="bold" />
+
+        <!-- Student Bubbles Container -->
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:orientation="horizontal"
+            android:gravity="center"
+            android:layout_marginHorizontal="4dp">
+
+            <!-- Bubble A -->
+            <TextView
+                android:id="@+id/txtVerifyOptA"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:text="A"
+                android:textColor="@color/text_primary"
+                android:gravity="center"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:background="@drawable/bg_bubble_selector" />
+
+            <View
+                android:layout_width="6dp"
+                android:layout_height="0dp" />
+
+            <!-- Bubble B -->
+            <TextView
+                android:id="@+id/txtVerifyOptB"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:text="B"
+                android:textColor="@color/text_primary"
+                android:gravity="center"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:background="@drawable/bg_bubble_selector" />
+
+            <View
+                android:layout_width="6dp"
+                android:layout_height="0dp" />
+
+            <!-- Bubble C -->
+            <TextView
+                android:id="@+id/txtVerifyOptC"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:text="C"
+                android:textColor="@color/text_primary"
+                android:gravity="center"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:background="@drawable/bg_bubble_selector" />
+
+            <View
+                android:layout_width="6dp"
+                android:layout_height="0dp" />
+
+            <!-- Bubble D -->
+            <TextView
+                android:id="@+id/txtVerifyOptD"
+                android:layout_width="28dp"
+                android:layout_height="28dp"
+                android:text="D"
+                android:textColor="@color/text_primary"
+                android:gravity="center"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:background="@drawable/bg_bubble_selector" />
+
+        </LinearLayout>
+
+        <!-- Correct Key Value Text -->
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical"
+            android:layout_marginEnd="10dp">
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Key:"
+                android:textColor="@color/text_muted"
+                android:textSize="11sp"
+                android:layout_marginEnd="4dp" />
+
+            <TextView
+                android:id="@+id/txtVerifyKeyAns"
+                android:layout_width="wrap_content"
+                android:layout_height="22dp"
+                android:minWidth="28dp"
+                android:paddingHorizontal="5dp"
+                android:gravity="center"
+                android:text="A"
+                android:textColor="@color/white"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:background="@drawable/bg_rounded_card"
+                android:backgroundTint="#27272A" />
+        </LinearLayout>
+
+        <!-- Status Icon -->
+        <ImageView
+            android:id="@+id/imgVerifyStatusIcon"
+            android:layout_width="16dp"
+            android:layout_height="16dp"
+            android:src="@drawable/ic_check"
+            app:tint="#10B981" />
+
+    </LinearLayout>
+</androidx.cardview.widget.CardView>

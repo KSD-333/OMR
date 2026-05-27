@@ -1,0 +1,177 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#FF09090B">
+
+    <!-- Header Toolbar -->
+    <RelativeLayout
+        android:id="@+id/layoutVerifyHeader"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:paddingHorizontal="16dp"
+        android:background="#80000000"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerVertical="true"
+            android:text="Verify Scanned OMR Sheet"
+            android:textColor="@color/white"
+            android:textStyle="bold"
+            android:textSize="16sp" />
+
+        <TextView
+            android:id="@+id/txtVerifyStudentID"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentEnd="true"
+            android:layout_centerVertical="true"
+            android:text="Student ID: 294025"
+            android:textColor="#3B82F6"
+            android:textStyle="bold"
+            android:textSize="13sp" />
+    </RelativeLayout>
+
+    <!-- Top split: Image Preview Card -->
+    <androidx.cardview.widget.CardView
+        android:id="@+id/cardImagePreview"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_margin="16dp"
+        app:cardCornerRadius="12dp"
+        app:cardBackgroundColor="#1C1917"
+        app:layout_constraintTop_toBottomOf="@id/layoutVerifyHeader"
+        app:layout_constraintBottom_toTopOf="@id/cardVerifyBottom">
+
+        <FrameLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent">
+
+            <ImageView
+                android:id="@+id/imgVerifySheetPreview"
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:scaleType="centerInside"
+                android:alpha="0.8"
+                android:contentDescription="Scanned Sheet Preview" />
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="match_parent"
+                android:background="@drawable/bg_border_blue" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="bottom|start"
+                android:layout_margin="12dp"
+                android:text="📷 Scanned Sheet Input Preview"
+                android:textColor="@color/white"
+                android:textSize="11sp"
+                android:textStyle="bold"
+                android:background="#CC000000"
+                android:paddingHorizontal="8dp"
+                android:paddingVertical="4dp" />
+        </FrameLayout>
+    </androidx.cardview.widget.CardView>
+
+
+
+    <!-- Bottom Score & Action Card -->
+    <androidx.cardview.widget.CardView
+        android:id="@+id/cardVerifyBottom"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        app:cardCornerRadius="0dp"
+        app:cardElevation="8dp"
+        app:cardBackgroundColor="#18181B"
+        app:layout_constraintBottom_toBottomOf="parent">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="16dp">
+
+            <!-- Scores overview -->
+            <RelativeLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="12dp">
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:layout_alignParentStart="true">
+
+                    <TextView
+                        android:id="@+id/txtVerifyStats"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Correct: 43  |  Incorrect: 5  |  Blank: 2"
+                        android:textColor="@color/text_secondary"
+                        android:textSize="12sp" />
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Verified matching answer key rules"
+                        android:textColor="@color/text_muted"
+                        android:textSize="11sp"
+                        android:layout_marginTop="2dp" />
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/txtVerifyScore"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="86 / 100"
+                    android:textColor="@color/white"
+                    android:textSize="22sp"
+                    android:textStyle="bold"
+                    android:layout_alignParentEnd="true"
+                    android:layout_centerVertical="true" />
+            </RelativeLayout>
+
+            <!-- Action Buttons -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="48dp"
+                android:orientation="horizontal">
+
+                <androidx.appcompat.widget.AppCompatButton
+                    android:id="@+id/btnVerifyDiscard"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:background="@drawable/bg_rounded_card"
+                    android:backgroundTint="#27272A"
+                    android:text="Discard"
+                    android:textColor="@color/text_primary"
+                    android:textStyle="bold"
+                    android:textAllCaps="false"
+                    android:layout_marginEnd="8dp" />
+
+                <androidx.appcompat.widget.AppCompatButton
+                    android:id="@+id/btnVerifySave"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1.5"
+                    android:background="@drawable/bg_pill_button"
+                    android:backgroundTint="#10B981"
+                    android:text="Confirm &amp; Save Result"
+                    android:textColor="@color/white"
+                    android:textStyle="bold"
+                    android:textAllCaps="false"
+                    android:layout_marginStart="8dp" />
+            </LinearLayout>
+
+        </LinearLayout>
+    </androidx.cardview.widget.CardView>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

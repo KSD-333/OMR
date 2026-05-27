@@ -1,0 +1,23 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="120dp"
+    android:height="120dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- Outer boundary -->
+    <path
+        android:pathData="M19,3H5C3.9,3 3,3.9 3,5v14c0,1.1 0.9,2 2,2h14c1.1,0 2,-0.9 2,-2V5C21,3.9 20.1,3 19,3z M19,19H5V5h14V19z"
+        android:fillColor="#FFFFFFFF"/>
+    <!-- Bars -->
+    <!-- Bar 1 (left, medium) -->
+    <path
+        android:pathData="M7,12h2.5v5H7z"
+        android:fillColor="#FFFFFFFF"/>
+    <!-- Bar 2 (center, high) -->
+    <path
+        android:pathData="M11,8h2.5v9H11z"
+        android:fillColor="#FFFFFFFF"/>
+    <!-- Bar 3 (right, medium-high) -->
+    <path
+        android:pathData="M15,10h2.5v7H15z"
+        android:fillColor="#FFFFFFFF"/>
+</vector>

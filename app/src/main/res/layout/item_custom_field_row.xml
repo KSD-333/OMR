@@ -1,0 +1,69 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="12dp"
+    android:backgroundTint="@color/bg_dark_card"
+    app:cardCornerRadius="12dp"
+    app:cardElevation="0dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="64dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:paddingHorizontal="16dp">
+
+        <!-- Active Switch -->
+        <androidx.appcompat.widget.SwitchCompat
+            android:id="@+id/switchFieldActive"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:checked="true"
+            app:thumbTint="@color/color_page_1"
+            app:trackTint="@color/color_page_1_bg" />
+
+        <!-- Field Name Edit Input Box -->
+        <EditText
+            android:id="@+id/inputFieldName"
+            android:layout_width="0dp"
+            android:layout_height="40dp"
+            android:layout_weight="1"
+            android:layout_marginStart="16dp"
+            android:layout_marginEnd="12dp"
+            android:background="@drawable/bg_input_field"
+            android:inputType="textCapWords"
+            android:paddingHorizontal="12dp"
+            android:textColor="@color/text_primary"
+            android:textSize="14sp"
+            android:maxLines="1" />
+
+        <!-- LTR Tag Label -->
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:background="@drawable/bg_rounded_card"
+            android:backgroundTint="@color/bg_dark_input"
+            android:text="LTR"
+            android:textColor="@color/text_muted"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:paddingHorizontal="10dp"
+            android:paddingVertical="4dp"
+            android:layout_marginEnd="16dp" />
+
+        <!-- Delete Close Icon -->
+        <ImageView
+            android:id="@+id/btnDeleteField"
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:src="@drawable/ic_delete"
+            android:contentDescription="Delete field"
+            app:tint="#D32F2F"
+            android:clickable="true"
+            android:focusable="true"
+            android:background="?android:attr/selectableItemBackgroundBorderless" />
+
+    </LinearLayout>
+</androidx.cardview.widget.CardView>

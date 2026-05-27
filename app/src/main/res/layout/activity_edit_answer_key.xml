@@ -1,0 +1,1028 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/bg_dark_gradient">
+
+    <!-- Top Toolbar Header -->
+    <androidx.cardview.widget.CardView
+        android:id="@+id/toolbarCard"
+        android:layout_width="match_parent"
+        android:layout_height="64dp"
+        android:backgroundTint="@color/bg_dark_card"
+        app:cardElevation="4dp"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <androidx.constraintlayout.widget.ConstraintLayout
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:paddingHorizontal="16dp">
+
+            <!-- Back Arrow -->
+            <ImageView
+                android:id="@+id/btnBack"
+                android:layout_width="24dp"
+                android:layout_height="24dp"
+                android:src="@drawable/ic_arrow_back"
+                android:contentDescription="Back"
+                android:clickable="true"
+                android:focusable="true"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintStart_toStartOf="parent" />
+
+            <!-- Title -->
+            <TextView
+                android:id="@+id/txtToolbarTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Edit Answer Key"
+                android:textColor="@color/text_primary"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:layout_marginStart="16dp"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintStart_toEndOf="@id/btnBack" />
+
+            <!-- Save Action Button -->
+            <LinearLayout
+                android:id="@+id/btnSave"
+                android:layout_width="wrap_content"
+                android:layout_height="match_parent"
+                android:orientation="horizontal"
+                android:gravity="center"
+                android:clickable="true"
+                android:focusable="true"
+                android:background="?android:attr/selectableItemBackground"
+                app:layout_constraintTop_toTopOf="parent"
+                app:layout_constraintBottom_toBottomOf="parent"
+                app:layout_constraintEnd_toEndOf="parent">
+
+                <ImageView
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:src="@drawable/ic_save"
+                    app:tint="#60A5FA"
+                    android:layout_marginEnd="6dp" />
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Save"
+                    android:textColor="#60A5FA"
+                    android:textSize="16sp"
+                    android:textStyle="bold" />
+            </LinearLayout>
+
+        </androidx.constraintlayout.widget.ConstraintLayout>
+    </androidx.cardview.widget.CardView>
+
+    <!-- Scrollable Main Settings Area -->
+    <androidx.core.widget.NestedScrollView
+        android:id="@+id/scrollView"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:fillViewport="true"
+        app:layout_constraintTop_toBottomOf="@id/toolbarCard"
+        app:layout_constraintBottom_toTopOf="@id/bottomNavigation">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:padding="20dp">
+
+            <!-- Key Name Input Header -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Key Name"
+                android:textColor="@color/text_secondary"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="6dp" />
+
+            <EditText
+                android:id="@+id/inputKeyName"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:background="@drawable/bg_edit_text_outline"
+                android:hint="New Answer Key"
+                android:textColorHint="@color/text_muted"
+                android:textColor="@color/text_primary"
+                android:inputType="textCapWords"
+                android:paddingHorizontal="16dp"
+                android:textSize="14sp"
+                android:maxLines="1"
+                android:layout_marginBottom="20dp" />
+
+            <!-- Questions Chip Row -->
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="40dp"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:layout_marginBottom="16dp">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Questions:"
+                    android:textColor="@color/text_primary"
+                    android:textSize="14sp"
+                    android:textStyle="bold"
+                    android:layout_marginEnd="12dp" />
+
+                <!-- 50 -->
+                <TextView
+                    android:id="@+id/chipQ50"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:gravity="center"
+                    android:text="50"
+                    android:textColor="@color/white"
+                    android:background="@drawable/bg_rounded_card"
+                    android:backgroundTint="@color/dashboard_card_teal"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:layout_marginEnd="8dp" />
+
+                <!-- 100 -->
+                <TextView
+                    android:id="@+id/chipQ100"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:gravity="center"
+                    android:text="100"
+                    android:textColor="@color/text_primary"
+                    android:background="@drawable/bg_rounded_card"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:layout_marginEnd="8dp" />
+
+                <!-- 120 -->
+                <TextView
+                    android:id="@+id/chipQ120"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:gravity="center"
+                    android:text="120"
+                    android:textColor="@color/text_primary"
+                    android:background="@drawable/bg_rounded_card"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:layout_marginEnd="8dp" />
+
+                <!-- 160 -->
+                <TextView
+                    android:id="@+id/chipQ160"
+                    android:layout_width="0dp"
+                    android:layout_height="match_parent"
+                    android:layout_weight="1"
+                    android:gravity="center"
+                    android:text="160"
+                    android:textColor="@color/text_primary"
+                    android:background="@drawable/bg_rounded_card"
+                    android:clickable="true"
+                    android:focusable="true" />
+            </LinearLayout>
+
+            <!-- Teal progress bar line -->
+            <ProgressBar
+                android:id="@+id/progressAnswers"
+                style="?android:attr/progressBarStyleHorizontal"
+                android:layout_width="match_parent"
+                android:layout_height="4dp"
+                android:progress="0"
+                android:max="100"
+                android:progressTint="@color/dashboard_card_teal"
+                android:progressBackgroundTint="@color/border_dark"
+                android:layout_marginBottom="14dp" />
+
+            <!-- Answers Set Stats Row -->
+            <RelativeLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginBottom="24dp">
+
+                <TextView
+                    android:id="@+id/txtAnswersSetLabel"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="0 / 100 answers set"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="13sp"
+                    android:layout_alignParentStart="true" />
+
+                <TextView
+                    android:id="@+id/btnClearAll"
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="✕  Clear All"
+                    android:textColor="#60A5FA"
+                    android:textSize="13sp"
+                    android:textStyle="bold"
+                    android:clickable="true"
+                    android:focusable="true"
+                    android:layout_alignParentEnd="true" />
+            </RelativeLayout>
+
+            <!-- 1. Scan Master Key Collapsible Card -->
+            <LinearLayout
+                android:id="@+id/cardScanMasterKey"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_collapsible_card"
+                android:orientation="vertical"
+                android:padding="16dp"
+                android:layout_marginBottom="16dp">
+
+                <!-- Header Area -->
+                <RelativeLayout
+                    android:id="@+id/headerScanMasterKey"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:clickable="true"
+                    android:focusable="true">
+
+                    <ImageView
+                        android:id="@+id/iconScanMasterKey"
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:src="@drawable/ic_camera"
+                        app:tint="#10B981"
+                        android:layout_alignParentStart="true"
+                        android:layout_centerVertical="true" />
+
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:layout_toEndOf="@id/iconScanMasterKey"
+                        android:layout_toStartOf="@id/chevronScanMasterKey"
+                        android:layout_marginStart="14dp"
+                        android:layout_centerVertical="true">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Scan Master Key"
+                            android:textColor="@color/text_primary"
+                            android:textSize="15sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Auto-fill from photo"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="12sp"
+                            android:layout_marginTop="2dp" />
+                    </LinearLayout>
+
+                    <ImageView
+                        android:id="@+id/chevronScanMasterKey"
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:src="@drawable/ic_chevron_down"
+                        app:tint="@color/text_secondary"
+                        android:layout_alignParentEnd="true"
+                        android:layout_centerVertical="true" />
+                </RelativeLayout>
+
+                <!-- Expanded Content Body (Initially Hidden) -->
+                <LinearLayout
+                    android:id="@+id/bodyScanMasterKey"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:layout_marginTop="16dp"
+                    android:visibility="gone"
+                    tools:visibility="visible">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Photograph or pick a filled answer sheet. Detected answers are merged into the grid below."
+                        android:textColor="@color/text_secondary"
+                        android:textSize="13sp"
+                        android:lineSpacingExtra="3dp"
+                        android:layout_marginBottom="16dp" />
+
+
+
+                    <!-- Camera & Gallery Pill Buttons -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="48dp"
+                        android:orientation="horizontal">
+
+                        <!-- Camera Action Button -->
+                        <LinearLayout
+                            android:id="@+id/btnMasterCamera"
+                            android:layout_width="0dp"
+                            android:layout_height="match_parent"
+                            android:layout_weight="1"
+                            android:orientation="horizontal"
+                            android:gravity="center"
+                            android:background="@drawable/bg_pill_button"
+                            android:backgroundTint="#3B82F6"
+                            android:layout_marginEnd="8dp"
+                            android:clickable="true"
+                            android:focusable="true">
+
+                            <ImageView
+                                android:layout_width="18dp"
+                                android:layout_height="18dp"
+                                android:src="@drawable/ic_camera"
+                                app:tint="@color/white"
+                                android:layout_marginEnd="8dp" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Camera"
+                                android:textColor="@color/white"
+                                android:textSize="14sp"
+                                android:textStyle="bold" />
+                        </LinearLayout>
+
+                        <!-- Gallery Action Button -->
+                        <LinearLayout
+                            android:id="@+id/btnMasterGallery"
+                            android:layout_width="0dp"
+                            android:layout_height="match_parent"
+                            android:layout_weight="1"
+                            android:orientation="horizontal"
+                            android:gravity="center"
+                            android:background="@drawable/bg_rounded_card"
+                            android:layout_marginStart="8dp"
+                            android:clickable="true"
+                            android:focusable="true">
+
+                            <ImageView
+                                android:layout_width="18dp"
+                                android:layout_height="18dp"
+                                android:src="@drawable/ic_gallery"
+                                app:tint="@color/text_secondary"
+                                android:layout_marginEnd="8dp" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Gallery"
+                                android:textColor="@color/text_primary"
+                                android:textSize="14sp"
+                                android:textStyle="bold" />
+                        </LinearLayout>
+
+                    </LinearLayout>
+
+                </LinearLayout>
+
+            </LinearLayout>
+
+            <!-- 2. Scoring Options Collapsible Card -->
+            <LinearLayout
+                android:id="@+id/cardScoringOptions"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:background="@drawable/bg_collapsible_card"
+                android:orientation="vertical"
+                android:padding="16dp"
+                android:layout_marginBottom="24dp">
+
+                <!-- Header Area -->
+                <RelativeLayout
+                    android:id="@+id/headerScoringOptions"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:clickable="true"
+                    android:focusable="true">
+
+                    <ImageView
+                        android:id="@+id/iconScoringOptions"
+                        android:layout_width="24dp"
+                        android:layout_height="24dp"
+                        android:src="@drawable/ic_sliders"
+                        app:tint="#D97706"
+                        android:layout_alignParentStart="true"
+                        android:layout_centerVertical="true" />
+
+                    <LinearLayout
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:layout_toEndOf="@id/iconScoringOptions"
+                        android:layout_toStartOf="@id/scoringCardIndicators"
+                        android:layout_marginStart="14dp"
+                        android:layout_centerVertical="true">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Scoring Options"
+                            android:textColor="@color/text_primary"
+                            android:textSize="15sp"
+                            android:textStyle="bold" />
+
+                        <TextView
+                            android:id="@+id/txtScoringOptionsSubtitle"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Penalty &amp; custom points"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="12sp"
+                            android:layout_marginTop="2dp" />
+                    </LinearLayout>
+
+                    <LinearLayout
+                        android:id="@+id/scoringCardIndicators"
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:layout_toStartOf="@id/chevronScoringOptions"
+                        android:layout_marginEnd="12dp"
+                        android:layout_centerVertical="true">
+
+                        <!-- Pink active status dot -->
+                        <View
+                            android:id="@+id/scoringActiveDot"
+                            android:layout_width="8dp"
+                            android:layout_height="8dp"
+                            android:background="@drawable/dot_active"
+                            android:backgroundTint="#F472B6"
+                            android:visibility="gone"
+                            tools:visibility="visible" />
+                    </LinearLayout>
+
+                    <ImageView
+                        android:id="@+id/chevronScoringOptions"
+                        android:layout_width="20dp"
+                        android:layout_height="20dp"
+                        android:src="@drawable/ic_chevron_down"
+                        app:tint="@color/text_secondary"
+                        android:layout_alignParentEnd="true"
+                        android:layout_centerVertical="true" />
+                </RelativeLayout>
+
+                <!-- Expanded Content Body (Initially Hidden) -->
+                <LinearLayout
+                    android:id="@+id/bodyScoringOptions"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:orientation="vertical"
+                    android:layout_marginTop="16dp"
+                    android:visibility="gone"
+                    tools:visibility="visible">
+
+                    <!-- Penalty Title -->
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:text="Penalty per wrong answer"
+                        android:textColor="@color/text_primary"
+                        android:textSize="14sp"
+                        android:textStyle="bold"
+                        android:layout_marginBottom="12dp" />
+
+                    <!-- Penalty Input Fields -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="horizontal"
+                        android:layout_marginBottom="12dp">
+
+                        <!-- Incorrect Outlined Field -->
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical"
+                            android:layout_marginEnd="8dp">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Incorrect"
+                                android:textColor="@color/text_secondary"
+                                android:textSize="11sp"
+                                android:layout_marginBottom="4dp" />
+
+                            <EditText
+                                android:id="@+id/inputPenaltyIncorrect"
+                                android:layout_width="match_parent"
+                                android:layout_height="44dp"
+                                android:background="@drawable/bg_edit_text_outline"
+                                android:gravity="center"
+                                android:text="-0.25"
+                                android:textColor="@color/text_primary"
+                                android:inputType="numberDecimal|numberSigned"
+                                android:textSize="14sp" />
+                        </LinearLayout>
+
+                        <!-- Multi-Mark Outlined Field -->
+                        <LinearLayout
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:orientation="vertical"
+                            android:layout_marginStart="8dp">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Multi-mark"
+                                android:textColor="@color/text_secondary"
+                                android:textSize="11sp"
+                                android:layout_marginBottom="4dp" />
+
+                            <EditText
+                                android:id="@+id/inputPenaltyMultiMark"
+                                android:layout_width="match_parent"
+                                android:layout_height="44dp"
+                                android:background="@drawable/bg_edit_text_outline"
+                                android:gravity="center"
+                                android:text="-0.25"
+                                android:textColor="@color/text_primary"
+                                android:inputType="numberDecimal|numberSigned"
+                                android:textSize="14sp" />
+                        </LinearLayout>
+                    </LinearLayout>
+
+                    <!-- Quick Penalty Chips -->
+                    <LinearLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="32dp"
+                        android:orientation="horizontal"
+                        android:gravity="center_vertical"
+                        android:layout_marginBottom="16dp">
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Quick:"
+                            android:textColor="@color/text_secondary"
+                            android:textSize="13sp"
+                            android:layout_marginEnd="10dp" />
+
+                        <!-- None -->
+                        <TextView
+                            android:id="@+id/chipQuickNone"
+                            android:layout_width="0dp"
+                            android:layout_height="match_parent"
+                            android:layout_weight="1"
+                            android:gravity="center"
+                            android:text="None"
+                            android:textColor="@color/text_primary"
+                            android:background="@drawable/bg_rounded_card"
+                            android:textSize="12sp"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:layout_marginEnd="6dp" />
+
+                        <!-- -1/4 -->
+                        <TextView
+                            android:id="@+id/chipQuickQuarter"
+                            android:layout_width="0dp"
+                            android:layout_height="match_parent"
+                            android:layout_weight="1"
+                            android:gravity="center"
+                            android:text="-¼"
+                            android:textColor="@color/white"
+                            android:background="@drawable/bg_rounded_card"
+                            android:backgroundTint="@color/dashboard_card_teal"
+                            android:textSize="12sp"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:layout_marginEnd="6dp" />
+
+                        <!-- -1/3 -->
+                        <TextView
+                            android:id="@+id/chipQuickThird"
+                            android:layout_width="0dp"
+                            android:layout_height="match_parent"
+                            android:layout_weight="1"
+                            android:gravity="center"
+                            android:text="-⅓"
+                            android:textColor="@color/text_primary"
+                            android:background="@drawable/bg_rounded_card"
+                            android:textSize="12sp"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:layout_marginEnd="6dp" />
+
+                        <!-- -1/2 -->
+                        <TextView
+                            android:id="@+id/chipQuickHalf"
+                            android:layout_width="0dp"
+                            android:layout_height="match_parent"
+                            android:layout_weight="1"
+                            android:gravity="center"
+                            android:text="-½"
+                            android:textColor="@color/text_primary"
+                            android:background="@drawable/bg_rounded_card"
+                            android:textSize="12sp"
+                            android:clickable="true"
+                            android:focusable="true"
+                            android:layout_marginEnd="6dp" />
+
+                        <!-- -1 -->
+                        <TextView
+                            android:id="@+id/chipQuickOne"
+                            android:layout_width="0dp"
+                            android:layout_height="match_parent"
+                            android:layout_weight="1"
+                            android:gravity="center"
+                            android:text="-1"
+                            android:textColor="@color/text_primary"
+                            android:background="@drawable/bg_rounded_card"
+                            android:textSize="12sp"
+                            android:clickable="true"
+                            android:focusable="true" />
+                    </LinearLayout>
+
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:background="@color/border_dark"
+                        android:layout_marginVertical="16dp" />
+
+                    <!-- Custom Points Switch Row -->
+                    <RelativeLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginBottom="12dp">
+
+                        <LinearLayout
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:layout_alignParentStart="true"
+                            android:layout_toStartOf="@id/switchCustomPoints"
+                            android:layout_marginEnd="16dp">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Custom points per question"
+                                android:textColor="@color/text_primary"
+                                android:textSize="14sp"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Assign different point values to questions"
+                                android:textColor="@color/text_secondary"
+                                android:textSize="11sp"
+                                android:layout_marginTop="2dp" />
+                        </LinearLayout>
+
+                        <androidx.appcompat.widget.SwitchCompat
+                            android:id="@+id/switchCustomPoints"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_alignParentEnd="true"
+                            android:layout_centerVertical="true"
+                            app:thumbTint="@color/color_page_1"
+                            app:trackTint="@color/color_page_1_bg" />
+                    </RelativeLayout>
+
+                    <!-- Custom point choices group (Set All) -->
+                    <LinearLayout
+                        android:id="@+id/layoutSetAllPoints"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:orientation="vertical"
+                        android:visibility="gone"
+                        tools:visibility="visible">
+
+                        <LinearLayout
+                            android:layout_width="match_parent"
+                            android:layout_height="32dp"
+                            android:orientation="horizontal"
+                            android:gravity="center_vertical"
+                            android:layout_marginBottom="10dp">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Set all:"
+                                android:textColor="@color/text_secondary"
+                                android:textSize="13sp"
+                                android:layout_marginEnd="12dp" />
+
+                            <TextView
+                                android:id="@+id/chipPtHalf"
+                                android:layout_width="0dp"
+                                android:layout_height="match_parent"
+                                android:layout_weight="1"
+                                android:gravity="center"
+                                android:text="0.5pt"
+                                android:textColor="@color/text_primary"
+                                android:background="@drawable/bg_rounded_card"
+                                android:textSize="11sp"
+                                android:clickable="true"
+                                android:focusable="true"
+                                android:layout_marginEnd="6dp" />
+
+                            <TextView
+                                android:id="@+id/chipPtOne"
+                                android:layout_width="0dp"
+                                android:layout_height="match_parent"
+                                android:layout_weight="1"
+                                android:gravity="center"
+                                android:text="1pt"
+                                android:textColor="@color/white"
+                                android:background="@drawable/bg_rounded_card"
+                                android:backgroundTint="@color/dashboard_card_teal"
+                                android:textSize="11sp"
+                                android:clickable="true"
+                                android:focusable="true"
+                                android:layout_marginEnd="6dp" />
+
+                            <TextView
+                                android:id="@+id/chipPtTwo"
+                                android:layout_width="0dp"
+                                android:layout_height="match_parent"
+                                android:layout_weight="1"
+                                android:gravity="center"
+                                android:text="2pt"
+                                android:textColor="@color/text_primary"
+                                android:background="@drawable/bg_rounded_card"
+                                android:textSize="11sp"
+                                android:clickable="true"
+                                android:focusable="true"
+                                android:layout_marginEnd="6dp" />
+
+                            <TextView
+                                android:id="@+id/chipPtThree"
+                                android:layout_width="0dp"
+                                android:layout_height="match_parent"
+                                android:layout_weight="1"
+                                android:gravity="center"
+                                android:text="3pt"
+                                android:textColor="@color/text_primary"
+                                android:background="@drawable/bg_rounded_card"
+                                android:textSize="11sp"
+                                android:clickable="true"
+                                android:focusable="true"
+                                android:layout_marginEnd="6dp" />
+
+                            <TextView
+                                android:id="@+id/chipPtFive"
+                                android:layout_width="0dp"
+                                android:layout_height="match_parent"
+                                android:layout_weight="1"
+                                android:gravity="center"
+                                android:text="5pt"
+                                android:textColor="@color/text_primary"
+                                android:background="@drawable/bg_rounded_card"
+                                android:textSize="11sp"
+                                android:clickable="true"
+                                android:focusable="true" />
+                        </LinearLayout>
+
+                        <TextView
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:text="Edit individual points via badges in the grid below."
+                            android:textColor="@color/text_muted"
+                            android:textSize="12sp"
+                            android:layout_marginBottom="8dp" />
+
+                    </LinearLayout>
+
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="1dp"
+                        android:background="@color/border_dark"
+                        android:layout_marginVertical="16dp" />
+
+                    <!-- Multi-correct Switch Row -->
+                    <RelativeLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content">
+
+                        <LinearLayout
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:orientation="vertical"
+                            android:layout_alignParentStart="true"
+                            android:layout_toStartOf="@id/switchMultiCorrect"
+                            android:layout_marginEnd="16dp">
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="Multi-correct answer keys"
+                                android:textColor="@color/text_primary"
+                                android:textSize="14sp"
+                                android:textStyle="bold" />
+
+                            <TextView
+                                android:layout_width="wrap_content"
+                                android:layout_height="wrap_content"
+                                android:text="A question may have more than one correct answer."
+                                android:textColor="@color/text_secondary"
+                                android:textSize="11sp"
+                                android:layout_marginTop="2dp" />
+                        </LinearLayout>
+
+                        <androidx.appcompat.widget.SwitchCompat
+                            android:id="@+id/switchMultiCorrect"
+                            android:layout_width="wrap_content"
+                            android:layout_height="wrap_content"
+                            android:layout_alignParentEnd="true"
+                            android:layout_centerVertical="true"
+                            app:thumbTint="@color/color_page_1"
+                            app:trackTint="@color/color_page_1_bg" />
+                    </RelativeLayout>
+
+                </LinearLayout>
+
+            </LinearLayout>
+
+            <!-- Question Answer List Title -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Answers Grid"
+                android:textColor="@color/text_primary"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="12dp" />
+
+            <!-- Question Answers Recycler List -->
+            <androidx.recyclerview.widget.RecyclerView
+                android:id="@+id/recyclerQuestions"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:nestedScrollingEnabled="false"
+                tools:itemCount="4"
+                tools:listitem="@layout/item_answer_key_question" />
+
+        </LinearLayout>
+    </androidx.core.widget.NestedScrollView>
+
+    <!-- Bottom Navigation Bar (Keys Tab Selected) -->
+    <LinearLayout
+        android:id="@+id/bottomNavigation"
+        android:layout_width="match_parent"
+        android:layout_height="64dp"
+        android:background="@color/bg_dark_card"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        app:layout_constraintBottom_toBottomOf="parent">
+
+        <!-- 1. Home -->
+        <LinearLayout
+            android:id="@+id/navHome"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:clickable="true"
+            android:focusable="true">
+
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:src="@drawable/ic_home"
+                app:tint="@color/text_secondary" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Home"
+                android:textColor="@color/text_secondary"
+                android:textSize="10sp"
+                android:layout_marginTop="4dp" />
+        </LinearLayout>
+
+        <!-- 2. Generator -->
+        <LinearLayout
+            android:id="@+id/navGenerator"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:clickable="true"
+            android:focusable="true">
+
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:src="@drawable/ic_sheet"
+                app:tint="@color/text_secondary" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Generator"
+                android:textColor="@color/text_secondary"
+                android:textSize="10sp"
+                android:layout_marginTop="4dp" />
+        </LinearLayout>
+
+        <!-- 3. Keys (Selected) -->
+        <LinearLayout
+            android:id="@+id/navKeys"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:clickable="true"
+            android:focusable="true">
+
+            <!-- Rounded capsule behind selected icon -->
+            <LinearLayout
+                android:layout_width="56dp"
+                android:layout_height="30dp"
+                android:background="@drawable/bg_capsule"
+                android:gravity="center">
+
+                <ImageView
+                    android:layout_width="20dp"
+                    android:layout_height="20dp"
+                    android:src="@drawable/ic_key"
+                    app:tint="@color/dashboard_card_teal" />
+            </LinearLayout>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Keys"
+                android:textColor="@color/dashboard_card_teal"
+                android:textSize="10sp"
+                android:textStyle="bold"
+                android:layout_marginTop="2dp" />
+        </LinearLayout>
+
+        <!-- 4. Scanner -->
+        <LinearLayout
+            android:id="@+id/navScanner"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:clickable="true"
+            android:focusable="true">
+
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:src="@drawable/ic_camera"
+                app:tint="@color/text_secondary" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Scanner"
+                android:textColor="@color/text_secondary"
+                android:textSize="10sp"
+                android:layout_marginTop="4dp" />
+        </LinearLayout>
+
+        <!-- 5. Results -->
+        <LinearLayout
+            android:id="@+id/navResults"
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:clickable="true"
+            android:focusable="true">
+
+            <ImageView
+                android:layout_width="20dp"
+                android:layout_height="20dp"
+                android:src="@drawable/ic_chart"
+                app:tint="@color/text_secondary" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Results"
+                android:textColor="@color/text_secondary"
+                android:textSize="10sp"
+                android:layout_marginTop="4dp" />
+        </LinearLayout>
+
+    </LinearLayout>
+
+</androidx.constraintlayout.widget.ConstraintLayout>

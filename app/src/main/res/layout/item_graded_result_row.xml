@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.cardview.widget.CardView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    android:layout_width="match_parent"
+    android:layout_height="wrap_content"
+    android:layout_marginBottom="12dp"
+    app:cardCornerRadius="12dp"
+    app:cardElevation="0dp"
+    app:cardBackgroundColor="#18181B">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="14dp">
+
+        <!-- Top Row: Exam Name + Date -->
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp">
+
+            <TextView
+                android:id="@+id/txtResultExamName"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Midterm Calculus"
+                android:textColor="#3B82F6"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:layout_alignParentStart="true" />
+
+            <TextView
+                android:id="@+id/txtResultDate"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="May 25, 17:00"
+                android:textColor="@color/text_muted"
+                android:textSize="11sp"
+                android:layout_alignParentEnd="true" />
+        </RelativeLayout>
+
+        <!-- Main Row: Student ID + Big Score -->
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="8dp">
+
+            <TextView
+                android:id="@+id/txtResultStudentID"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Student ID: 294025"
+                android:textColor="@color/text_primary"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:layout_alignParentStart="true"
+                android:layout_centerVertical="true" />
+
+            <TextView
+                android:id="@+id/txtResultScore"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="86.5 / 100"
+                android:textColor="@color/white"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:layout_alignParentEnd="true"
+                android:layout_centerVertical="true" />
+        </RelativeLayout>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="1dp"
+            android:background="#27272A"
+            android:layout_marginBottom="8dp" />
+
+        <!-- Bottom Stats Row -->
+        <RelativeLayout
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content">
+
+            <TextView
+                android:id="@+id/txtResultStats"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Correct: 43  |  Incorrect: 5  |  Blank: 2"
+                android:textColor="@color/text_secondary"
+                android:textSize="12sp"
+                android:layout_alignParentStart="true" />
+
+            <!-- Quick Delete Button -->
+            <ImageView
+                android:id="@+id/btnDeleteResult"
+                android:layout_width="16dp"
+                android:layout_height="16dp"
+                android:src="@drawable/ic_delete"
+                app:tint="#EF4444"
+                android:clickable="true"
+                android:focusable="true"
+                android:background="?android:attr/selectableItemBackgroundBorderless"
+                android:layout_alignParentEnd="true"
+                android:layout_centerVertical="true"
+                android:contentDescription="Delete result" />
+        </RelativeLayout>
+
+    </LinearLayout>
+</androidx.cardview.widget.CardView>

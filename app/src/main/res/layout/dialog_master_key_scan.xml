@@ -1,0 +1,204 @@
+<?xml version="1.0" encoding="utf-8"?>
+<androidx.constraintlayout.widget.ConstraintLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#FF09090B">
+
+    <!-- Captured/Picked Image Preview Container -->
+    <FrameLayout
+        android:id="@+id/layoutPreviewContainer"
+        android:layout_width="match_parent"
+        android:layout_height="match_parent"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent">
+
+        <ImageView
+            android:id="@+id/imgMasterSheetPreview"
+            android:layout_width="match_parent"
+            android:layout_height="match_parent"
+            android:scaleType="centerCrop"
+            android:alpha="0.4"
+            android:contentDescription="Master Sheet Image Preview" />
+    </FrameLayout>
+
+    <!-- Scanner Toolbar Header -->
+    <RelativeLayout
+        android:id="@+id/layoutScannerHeader"
+        android:layout_width="match_parent"
+        android:layout_height="56dp"
+        android:paddingHorizontal="16dp"
+        android:background="#99000000"
+        app:layout_constraintTop_toTopOf="parent">
+
+        <TextView
+            android:id="@+id/txtScannerOverlayTitle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_centerVertical="true"
+            android:text="OMR Master Key Scanner"
+            android:textColor="@color/white"
+            android:textStyle="bold"
+            android:textSize="16sp" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_alignParentEnd="true"
+            android:layout_centerVertical="true"
+            android:text="PROCESSING..."
+            android:textColor="#3B82F6"
+            android:textStyle="bold"
+            android:textSize="12sp" />
+    </RelativeLayout>
+
+    <!-- Center Alignment Frame Boundary -->
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:id="@+id/layoutAlignmentFrame"
+        android:layout_width="290dp"
+        android:layout_height="400dp"
+        android:background="@drawable/bg_selected_scan_card"
+        app:layout_constraintTop_toBottomOf="@id/layoutScannerHeader"
+        app:layout_constraintBottom_toTopOf="@id/txtScanTip"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent">
+
+        <!-- Corner L-markers (Simulated) -->
+        <View
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:background="#3B82F6"
+            android:layout_margin="8dp"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintStart_toStartOf="parent" />
+
+        <View
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:background="#3B82F6"
+            android:layout_margin="8dp"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
+
+        <View
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:background="#3B82F6"
+            android:layout_margin="8dp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent" />
+
+        <View
+            android:layout_width="24dp"
+            android:layout_height="24dp"
+            android:background="#3B82F6"
+            android:layout_margin="8dp"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
+
+        <!-- Mock Scanner laser line animation -->
+        <View
+            android:id="@+id/scanLaserLine"
+            android:layout_width="match_parent"
+            android:layout_height="3dp"
+            android:background="#10B981"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent" />
+
+        <!-- Scanner Successful Grade Results Card (Shown after scan complete) -->
+        <LinearLayout
+            android:id="@+id/layoutScanSuccessCard"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:orientation="vertical"
+            android:background="#E60F172A"
+            android:padding="24dp"
+            android:gravity="center"
+            android:visibility="gone"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintBottom_toBottomOf="parent">
+
+            <ImageView
+                android:layout_width="48dp"
+                android:layout_height="48dp"
+                android:src="@drawable/ic_check"
+                app:tint="#10B981"
+                android:layout_marginBottom="12dp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Master Key Scanned!"
+                android:textColor="@color/white"
+                android:textSize="18sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="12dp" />
+
+            <!-- Diagnostic score indicators -->
+            <TextView
+                android:id="@+id/txtDetectedInfo"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Detected 50 answers from OMR template"
+                android:textColor="@color/text_secondary"
+                android:textSize="13sp"
+                android:layout_marginBottom="24dp" />
+
+            <androidx.appcompat.widget.AppCompatButton
+                android:id="@+id/btnFinishScan"
+                android:layout_width="match_parent"
+                android:layout_height="44dp"
+                android:background="@drawable/bg_pill_button"
+                android:backgroundTint="#10B981"
+                android:text="Merge to Answer Key Grid"
+                android:textColor="@color/white"
+                android:textStyle="bold"
+                android:textAllCaps="false" />
+        </LinearLayout>
+    </androidx.constraintlayout.widget.ConstraintLayout>
+
+    <!-- Scan Progress Overlay -->
+    <LinearLayout
+        android:id="@+id/layoutScanningProgress"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:gravity="center"
+        android:background="@drawable/bg_rounded_card"
+        android:padding="12dp"
+        app:layout_constraintTop_toBottomOf="@id/layoutAlignmentFrame"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent"
+        app:layout_constraintBottom_toTopOf="@id/txtScanTip">
+
+        <ProgressBar
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:indeterminateTint="@color/dashboard_card_teal"
+            android:layout_marginEnd="10dp" />
+
+        <TextView
+            android:id="@+id/txtScanningStatus"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="Detecting OMR sheet markings..."
+            android:textColor="@color/text_primary"
+            android:textSize="13sp"
+            android:textStyle="bold" />
+    </LinearLayout>
+
+    <!-- Scan Tip Instruction Label -->
+    <TextView
+        android:id="@+id/txtScanTip"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Align master sheet anchors with the L-markers"
+        android:textColor="@color/text_secondary"
+        android:textSize="13sp"
+        android:layout_marginBottom="60dp"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
+</androidx.constraintlayout.widget.ConstraintLayout>

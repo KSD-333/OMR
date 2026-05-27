@@ -1,0 +1,296 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@color/bg_dark"
+    android:fillViewport="true"
+    tools:context=".LoginActivity">
+
+    <androidx.constraintlayout.widget.ConstraintLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:paddingBottom="32dp">
+
+        <!-- Gradient Hero Section at top -->
+        <LinearLayout
+            android:id="@+id/heroSection"
+            android:layout_width="match_parent"
+            android:layout_height="220dp"
+            android:orientation="vertical"
+            android:gravity="center"
+            android:background="@drawable/bg_dark_gradient"
+            app:layout_constraintTop_toTopOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent">
+
+            <!-- Circular glow + icon -->
+            <com.google.android.material.card.MaterialCardView
+                android:layout_width="76dp"
+                android:layout_height="76dp"
+                app:cardCornerRadius="38dp"
+                app:cardElevation="0dp"
+                app:strokeWidth="2dp"
+                app:strokeColor="#4F46E5"
+                app:cardBackgroundColor="#1A4F46E5">
+
+                <ImageView
+                    android:layout_width="40dp"
+                    android:layout_height="40dp"
+                    android:src="@drawable/ic_scan"
+                    app:tint="#818CF8"
+                    android:layout_gravity="center" />
+            </com.google.android.material.card.MaterialCardView>
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="OMR Scanner"
+                android:textColor="@color/text_primary"
+                android:textSize="26sp"
+                android:textStyle="bold"
+                android:letterSpacing="0.02"
+                android:layout_marginTop="12dp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Smart Grading for Schools"
+                android:textColor="#818CF8"
+                android:textSize="13sp"
+                android:layout_marginTop="4dp" />
+        </LinearLayout>
+
+        <!-- Tab Container -->
+        <LinearLayout
+            android:id="@+id/tabContainer"
+            android:layout_width="match_parent"
+            android:layout_height="48dp"
+            android:layout_marginHorizontal="24dp"
+            android:layout_marginTop="20dp"
+            android:background="@drawable/bg_rounded_card"
+            android:orientation="horizontal"
+            android:padding="4dp"
+            app:layout_constraintTop_toBottomOf="@id/heroSection"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent">
+
+            <TextView
+                android:id="@+id/btnTabSignIn"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:text="Sign In"
+                android:textColor="@color/text_primary"
+                android:textSize="14sp"
+                android:textStyle="bold"
+                android:clickable="true"
+                android:focusable="true"
+                android:background="@drawable/bg_rounded_card"
+                android:backgroundTint="@color/color_auth_primary" />
+
+            <TextView
+                android:id="@+id/btnTabSignUp"
+                android:layout_width="0dp"
+                android:layout_height="match_parent"
+                android:layout_weight="1"
+                android:gravity="center"
+                android:text="Create Account"
+                android:textColor="@color/text_secondary"
+                android:textSize="14sp"
+                android:clickable="true"
+                android:focusable="true" />
+        </LinearLayout>
+
+        <!-- Credentials Card -->
+        <LinearLayout
+            android:id="@+id/credentialsCard"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginHorizontal="24dp"
+            android:layout_marginTop="16dp"
+            android:background="@drawable/bg_rounded_card"
+            android:orientation="vertical"
+            android:padding="24dp"
+            app:layout_constraintTop_toBottomOf="@id/tabContainer"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent">
+
+            <!-- Card title -->
+            <TextView
+                android:id="@+id/txtCardTitle"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Welcome Back"
+                android:textColor="@color/text_primary"
+                android:textSize="20sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="6dp" />
+
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Sign in to your account to continue"
+                android:textColor="@color/text_secondary"
+                android:textSize="13sp"
+                android:layout_marginBottom="20dp" />
+
+            <!-- Email Label -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Email Address"
+                android:textColor="@color/text_secondary"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="6dp" />
+
+            <EditText
+                android:id="@+id/inputEmail"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:background="@drawable/bg_input_field"
+                android:hint="name@school.edu"
+                android:textColorHint="@color/text_muted"
+                android:textColor="@color/text_primary"
+                android:inputType="textEmailAddress"
+                android:paddingHorizontal="16dp"
+                android:textSize="14sp"
+                android:maxLines="1"
+                android:layout_marginBottom="16dp" />
+
+            <!-- Password Label -->
+            <TextView
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="Password"
+                android:textColor="@color/text_secondary"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:layout_marginBottom="6dp" />
+
+            <EditText
+                android:id="@+id/inputPassword"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:background="@drawable/bg_input_field"
+                android:hint="••••••••"
+                android:textColorHint="@color/text_muted"
+                android:textColor="@color/text_primary"
+                android:inputType="textPassword"
+                android:paddingHorizontal="16dp"
+                android:textSize="14sp"
+                android:maxLines="1"
+                android:layout_marginBottom="16dp" />
+
+            <!-- School Name Field (Sign Up Only) -->
+            <LinearLayout
+                android:id="@+id/layoutSchoolName"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="School Name"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="6dp" />
+
+                <EditText
+                    android:id="@+id/inputSchool"
+                    android:layout_width="match_parent"
+                    android:layout_height="52dp"
+                    android:background="@drawable/bg_input_field"
+                    android:hint="Greenwood High School"
+                    android:textColorHint="@color/text_muted"
+                    android:textColor="@color/text_primary"
+                    android:inputType="textCapWords"
+                    android:paddingHorizontal="16dp"
+                    android:textSize="14sp"
+                    android:maxLines="1"
+                    android:layout_marginBottom="16dp" />
+            </LinearLayout>
+
+            <!-- Teacher Code Field (Sign Up Only) -->
+            <LinearLayout
+                android:id="@+id/layoutTeacherCode"
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="vertical"
+                android:visibility="gone">
+
+                <TextView
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:text="Teacher/Admin Registration Code"
+                    android:textColor="@color/text_secondary"
+                    android:textSize="12sp"
+                    android:textStyle="bold"
+                    android:layout_marginBottom="6dp" />
+
+                <EditText
+                    android:id="@+id/inputCode"
+                    android:layout_width="match_parent"
+                    android:layout_height="52dp"
+                    android:background="@drawable/bg_input_field"
+                    android:hint="TCH-405-9"
+                    android:textColorHint="@color/text_muted"
+                    android:textColor="@color/text_primary"
+                    android:inputType="textCapCharacters"
+                    android:paddingHorizontal="16dp"
+                    android:textSize="14sp"
+                    android:maxLines="1"
+                    android:layout_marginBottom="16dp" />
+            </LinearLayout>
+
+            <!-- Error Label -->
+            <TextView
+                android:id="@+id/txtError"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:textColor="@color/color_error"
+                android:textSize="12sp"
+                android:layout_marginBottom="16dp"
+                android:visibility="gone"
+                tools:text="Please enter a valid email address"
+                tools:visibility="visible" />
+
+            <!-- Primary Action Button -->
+            <androidx.appcompat.widget.AppCompatButton
+                android:id="@+id/btnSubmit"
+                android:layout_width="match_parent"
+                android:layout_height="52dp"
+                android:background="@drawable/bg_gradient_button"
+                android:text="Sign In"
+                android:textColor="@color/white"
+                android:textSize="15sp"
+                android:textStyle="bold"
+                android:textAllCaps="false" />
+
+        </LinearLayout>
+
+        <!-- Toggle Footer link -->
+        <TextView
+            android:id="@+id/txtFooterToggle"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:layout_marginBottom="16dp"
+            android:text="Don't have an account? Create one"
+            android:textColor="@color/text_secondary"
+            android:textSize="14sp"
+            android:clickable="true"
+            android:focusable="true"
+            app:layout_constraintTop_toBottomOf="@id/credentialsCard"
+            app:layout_constraintBottom_toBottomOf="parent"
+            app:layout_constraintStart_toStartOf="parent"
+            app:layout_constraintEnd_toEndOf="parent" />
+
+    </androidx.constraintlayout.widget.ConstraintLayout>
+</ScrollView>
