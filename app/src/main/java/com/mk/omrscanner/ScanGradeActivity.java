@@ -722,11 +722,7 @@ public class ScanGradeActivity extends AppCompatActivity {
 
         for (int i = 0; i < totalQuestions; i++) {
             double qPoints = 1.0;
-            if (pointsArray != null && i < pointsArray.length()) {
-                try {
-                    qPoints = pointsArray.getDouble(i);
-                } catch (Exception e) {}
-            }
+            // Force 1 mark per question as requested, ignoring pointsArray
             maxPoints += qPoints;
 
             // Get correct options from key
@@ -763,11 +759,11 @@ public class ScanGradeActivity extends AppCompatActivity {
                     status = 2;
                 } else if (studentSelectedCount > 1 && !activeKey.multiCorrectActive) {
                     multiMarkCount++;
-                    earnedPoints -= multiMarkPenaltyVal;
+                    // earnedPoints -= multiMarkPenaltyVal; // Removed negative marking
                     status = 3;
                 } else {
                     incorrectCount++;
-                    earnedPoints -= incorrectPenaltyVal;
+                    // earnedPoints -= incorrectPenaltyVal; // Removed negative marking
                     status = 1;
                 }
             }
