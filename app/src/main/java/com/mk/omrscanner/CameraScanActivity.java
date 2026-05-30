@@ -54,9 +54,13 @@ public class CameraScanActivity extends AppCompatActivity {
     private static final String TAG = "CameraScanActivity";
     private static final int PERMISSION_REQUEST_CAMERA = 1001;
 
-    // Stabilization: require document corners to be stable for ~0.5s (4 frames at 8fps)
-    private static final int STABILITY_FRAMES_REQUIRED = 4;
-    private static final float STABILITY_THRESHOLD_PX = 20.0f; // allow slight handshake
+    // Stabilization: require corners stable for 5 frames with quality checks
+    private static final int STABILITY_FRAMES_REQUIRED = 5;
+    // Threshold is now dynamically computed per-resolution — see isStable()
+    private static final float STABILITY_THRESHOLD_RATIO = 0.015f; // 1.5% of image dimension
+    private static final double MIN_FOCUS_THRESHOLD = 50.0; // Laplacian variance minimum
+    private static final double MIN_BRIGHTNESS = 80.0;
+    private static final double MAX_BRIGHTNESS = 200.0;
 
     private PreviewView viewFinder;
     private DocumentOverlayView documentOverlay;
@@ -177,8 +181,33 @@ public class CameraScanActivity extends AppCompatActivity {
             int rotation = imageProxy.getImageInfo().getRotationDegrees();
             Bitmap rotated = rotateBitmap(bitmap, rotation);
 
-            // 1. Detect the 4 printed markers directly (robust industry standard)
-            float[][] markerCorners = OpenCVHelper.findPrintedMarkers(rotated);
+            // ── SPEED: downsample preview frame before heavy OpenCV analysis ───────────────
+            // 800px gives markers ~30px wide — reliable for contour detection.
+            // Still ~2.4x faster than full 1920p frames from camera.
+            // NOTE: do NOT go below 640px — markers become too small for OpenCV to find.
+            final int MAX_ANALYSIS_DIM = 800;
+            int srcW = rotated.getWidth();
+            int srcH = rotated.getHeight();
+            Bitmap analysisFrame = rotated;
+            float scaleDown = 1f;
+            if (Math.max(srcW, srcH) > MAX_ANALYSIS_DIM) {
+                scaleDown = (float) MAX_ANALYSIS_DIM / Math.max(srcW, srcH);
+                int newW = Math.max(1, (int) (srcW * scaleDown));
+                int newH = Math.max(1, (int) (srcH * scaleDown));
+                // Use bilinear filtering (true) for better edge quality — crucial for contour detection
+                analysisFrame = Bitmap.createScaledBitmap(rotated, newW, newH, true);
+            }
+
+            // 1. Detect the 4 printed markers on the downsampled frame
+            float[][] markerCorners = OpenCVHelper.findPrintedMarkers(analysisFrame);
+
+            // Scale marker coordinates back to the full-res rotated bitmap
+            if (markerCorners != null && scaleDown != 1f) {
+                for (int i = 0; i < 4; i++) {
+                    markerCorners[i][0] /= scaleDown;
+                    markerCorners[i][1] /= scaleDown;
+                }
+            }
 
             if (markerCorners != null) {
                 // Map the markers from Bitmap to View space for the green overlay
@@ -193,6 +222,9 @@ public class CameraScanActivity extends AppCompatActivity {
                     }
                 });
 
+                // Track image dimension for resolution-aware stability threshold
+                lastImageDim = Math.max(rotated.getWidth(), rotated.getHeight());
+
                 // Check stability
                 if (lastDocumentCorners != null && isStable(markerCorners, lastDocumentCorners)) {
                     stableFrameCount++;
@@ -202,13 +234,31 @@ public class CameraScanActivity extends AppCompatActivity {
                 lastDocumentCorners = markerCorners;
 
                 if (stableFrameCount >= STABILITY_FRAMES_REQUIRED && !isCaptured) {
-                    isCaptured = true;
-                    
-                    mainHandler.post(() -> {
-                        documentOverlay.setSuccessColor();
-                        updateStatusCaptured();
-                        captureHighResSheet();
-                    });
+                    // Quality gate: check focus and exposure before capturing
+                    boolean isSharp = computeFocusScore(analysisFrame) >= MIN_FOCUS_THRESHOLD;
+                    boolean wellExposed = isWellExposed(analysisFrame);
+
+                    if (isSharp && wellExposed) {
+                        isCaptured = true;
+                        mainHandler.post(() -> {
+                            documentOverlay.setSuccessColor();
+                            updateStatusCaptured();
+                            captureHighResSheet();
+                        });
+                    } else {
+                        // Reset stability if quality is poor — wait for better conditions
+                        stableFrameCount = Math.max(1, stableFrameCount - 2);
+                        mainHandler.post(() -> {
+                            if (!isCaptured) {
+                                if (!isSharp) {
+                                    txtScanStatus.setText("\uD83D\uDCF7 Hold steady \u2014 image is blurry");
+                                } else {
+                                    txtScanStatus.setText("\uD83D\uDCA1 Adjust lighting \u2014 too dark or bright");
+                                }
+                                txtScanStatus.setTextColor(Color.parseColor("#FBBF24"));
+                            }
+                        });
+                    }
                 }
 
             } else {
@@ -218,7 +268,7 @@ public class CameraScanActivity extends AppCompatActivity {
                 mainHandler.post(() -> {
                     if (!isCaptured) {
                         documentOverlay.clearOverlay();
-                        txtScanStatus.setText("📋 Looking for 4 corner markers...");
+                        txtScanStatus.setText("📋 Align document inside the frame...");
                         txtScanStatus.setTextColor(Color.parseColor("#F4F4F5"));
                     }
                 });
@@ -259,15 +309,63 @@ public class CameraScanActivity extends AppCompatActivity {
         return uiCorners;
     }
 
+    private float lastImageDim = 800f; // updated each frame for resolution-aware threshold
+
     private boolean isStable(float[][] current, float[][] previous) {
+        float threshold = STABILITY_THRESHOLD_RATIO * lastImageDim;
         for (int i = 0; i < 4; i++) {
             float dx = Math.abs(current[i][0] - previous[i][0]);
             float dy = Math.abs(current[i][1] - previous[i][1]);
-            if (dx > STABILITY_THRESHOLD_PX || dy > STABILITY_THRESHOLD_PX) {
+            if (dx > threshold || dy > threshold) {
                 return false;
             }
         }
         return true;
+    }
+
+    /**
+     * Computes Laplacian variance as a measure of image sharpness.
+     * Higher values mean sharper (more in-focus) images.
+     */
+    private double computeFocusScore(android.graphics.Bitmap bitmap) {
+        if (!OpenCVHelper.isInitialized() || bitmap == null) return Double.MAX_VALUE;
+        try {
+            org.opencv.core.Mat src = OpenCVHelper.bitmapToMat(bitmap);
+            org.opencv.core.Mat gray = new org.opencv.core.Mat();
+            org.opencv.imgproc.Imgproc.cvtColor(src, gray, org.opencv.imgproc.Imgproc.COLOR_RGBA2GRAY);
+            org.opencv.core.Mat laplacian = new org.opencv.core.Mat();
+            org.opencv.imgproc.Imgproc.Laplacian(gray, laplacian, org.opencv.core.CvType.CV_64F);
+            org.opencv.core.MatOfDouble mean = new org.opencv.core.MatOfDouble();
+            org.opencv.core.MatOfDouble stddev = new org.opencv.core.MatOfDouble();
+            org.opencv.core.Core.meanStdDev(laplacian, mean, stddev);
+            double variance = Math.pow(stddev.get(0, 0)[0], 2);
+            src.release();
+            gray.release();
+            laplacian.release();
+            mean.release();
+            stddev.release();
+            return variance;
+        } catch (Exception e) {
+            return Double.MAX_VALUE; // Don't block capture on failure
+        }
+    }
+
+    /**
+     * Checks if the image exposure is within an acceptable range.
+     */
+    private boolean isWellExposed(android.graphics.Bitmap bitmap) {
+        if (!OpenCVHelper.isInitialized() || bitmap == null) return true;
+        try {
+            org.opencv.core.Mat src = OpenCVHelper.bitmapToMat(bitmap);
+            org.opencv.core.Mat gray = new org.opencv.core.Mat();
+            org.opencv.imgproc.Imgproc.cvtColor(src, gray, org.opencv.imgproc.Imgproc.COLOR_RGBA2GRAY);
+            double meanBrightness = org.opencv.core.Core.mean(gray).val[0];
+            src.release();
+            gray.release();
+            return meanBrightness > MIN_BRIGHTNESS && meanBrightness < MAX_BRIGHTNESS;
+        } catch (Exception e) {
+            return true; // Don't block capture on failure
+        }
     }
 
     private void updateStatusCaptured() {
@@ -328,7 +426,7 @@ public class CameraScanActivity extends AppCompatActivity {
 
             YuvImage yuvImage = new YuvImage(nv21, ImageFormat.NV21, width, height, null);
             ByteArrayOutputStream out = new ByteArrayOutputStream();
-            yuvImage.compressToJpeg(new Rect(0, 0, width, height), 90, out);
+            yuvImage.compressToJpeg(new Rect(0, 0, width, height), 100, out);
             byte[] imageBytes = out.toByteArray();
 
             return BitmapFactory.decodeByteArray(imageBytes, 0, imageBytes.length);
@@ -354,7 +452,7 @@ public class CameraScanActivity extends AppCompatActivity {
         } catch (Exception e) {}
 
         File photoFile = new File(getExternalFilesDir(null),
-                "student_sheet_" + System.currentTimeMillis() + ".jpg");
+                "student_sheet_" + System.currentTimeMillis() + ".png");
 
         ImageCapture.OutputFileOptions outputOptions = 
                 new ImageCapture.OutputFileOptions.Builder(photoFile).build();

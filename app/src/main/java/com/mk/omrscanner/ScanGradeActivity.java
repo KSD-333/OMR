@@ -31,10 +31,13 @@ import android.provider.MediaStore;
 import androidx.core.app.ActivityCompat;
 import androidx.core.content.FileProvider;
 import android.os.Handler;
+import android.os.Looper;
 import java.io.File;
 import java.util.Random;
 import java.util.ArrayList;
 import java.text.DecimalFormat;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 
 public class ScanGradeActivity extends AppCompatActivity {
 
@@ -192,103 +195,164 @@ public class ScanGradeActivity extends AppCompatActivity {
         loadSelectedKeyOnStart();
     }
 
-    private void processAndShowVerification(Uri imageUri) {
-        AnswerKeyManager.AnswerKey activeKey = getActiveKeyForSelectedSheetFormat();
-        if (activeKey == null) {
-            return;
-        }
+    // ── Background processing executor (single thread — serialises scans) ────────────────
+    private final ExecutorService scanExecutor = Executors.newSingleThreadExecutor();
+    private final Handler mainHandler = new Handler(Looper.getMainLooper());
 
-        // Ensure OpenCV is initialized for preprocessing
-        OpenCVHelper.initOpenCV();
-
-        android.graphics.Bitmap studentBitmap = loadScaledBitmap(imageUri);
-        if (studentBitmap == null) {
-            Toast.makeText(this, "Error: Failed to load captured image!", Toast.LENGTH_SHORT).show();
-            return;
-        }
-
-        // Force OpenCV Printed Markers Detection First (The robust method)
-        float[][] contourCorners = null;
-        if (OpenCVHelper.isInitialized()) {
-            contourCorners = OpenCVHelper.findPrintedMarkers(studentBitmap);
-        }
-        
-        if (contourCorners != null) {
-            // Found printed markers via contour detection — apply perspective transform and grade
-            android.graphics.Bitmap dewarped = OpenCVHelper.applyPerspectiveTransformToTemplate(
-                    studentBitmap, contourCorners);
-            if (dewarped != null) {
-                proceedWithGrading(imageUri, dewarped, activeKey);
-                return;
-            }
-        }
-
-        // Fallback: Verify alignment corner markers strictly
-        android.graphics.Bitmap scaledForDetection = android.graphics.Bitmap.createScaledBitmap(studentBitmap, 595, 842, true);
-        float[][] markers = OMRProcessor.detectMarkersStrict(scaledForDetection);
-
-        if (markers != null) {
-            // Markers found — apply perspective transform for gallery images too
-            android.graphics.Bitmap processedBitmap = studentBitmap;
-            if (OpenCVHelper.isInitialized()) {
-                // Scale markers back to original bitmap coordinates
-                float scaleBackX = (float) studentBitmap.getWidth() / 595f;
-                float scaleBackY = (float) studentBitmap.getHeight() / 842f;
-                float[][] scaledMarkers = new float[4][2];
-                for (int i = 0; i < 4; i++) {
-                    scaledMarkers[i][0] = markers[i][0] * scaleBackX;
-                    scaledMarkers[i][1] = markers[i][1] * scaleBackY;
-                }
-                android.graphics.Bitmap dewarped = OpenCVHelper.applyPerspectiveTransformToTemplate(
-                        studentBitmap, scaledMarkers);
-                if (dewarped != null) {
-                    processedBitmap = dewarped;
-                }
-            }
-            proceedWithGrading(imageUri, processedBitmap, activeKey);
-            return;
-        }
-
-        // Show custom alert dialog explaining alignment issues and let the user decide
-        new android.app.AlertDialog.Builder(this)
-                .setTitle("OMR Alignment Failed")
-                .setMessage("The scanner could not locate the 4 corner markers on the sheet.\n\nPlease ensure:\n• The page is flat and not curled.\n• All 4 corner black boxes are fully visible.\n• There is good lighting and no glare/harsh shadows.")
-                .setPositiveButton("Try Again", (dialog, which) -> {
-                    if (isLiveCameraSelected) {
-                        openCamera();
-                    } else {
-                        openGalleryPicker();
-                    }
-                })
-                .setNeutralButton("Grade Anyway", (dialog, which) -> {
-                    proceedWithGrading(imageUri, studentBitmap, activeKey);
-                })
-                .setNegativeButton("Cancel", null)
-                .show();
+    /** Shows a compact loading spinner while heavy OMR work runs on a background thread. */
+    private android.app.ProgressDialog showScanningSpinner() {
+        android.app.ProgressDialog pd = new android.app.ProgressDialog(this);
+        pd.setMessage("⚡ Scanning OMR sheet…");
+        pd.setProgressStyle(android.app.ProgressDialog.STYLE_SPINNER);
+        pd.setCancelable(false);
+        pd.show();
+        return pd;
     }
 
-    private void proceedWithGrading(Uri imageUri, android.graphics.Bitmap studentBitmap, AnswerKeyManager.AnswerKey activeKey) {
-        // Enhance contrast via OpenCV for better bubble detection
-        android.graphics.Bitmap enhancedBitmap = studentBitmap;
-        if (OpenCVHelper.isInitialized()) {
-            android.graphics.Bitmap enhanced = OpenCVHelper.enhanceContrast(studentBitmap);
-            if (enhanced != null) {
-                enhancedBitmap = enhanced;
+    private void processAndShowVerification(Uri imageUri) {
+        AnswerKeyManager.AnswerKey activeKey = getActiveKeyForSelectedSheetFormat();
+        if (activeKey == null) return;
+
+        OpenCVHelper.initOpenCV();
+
+        android.app.ProgressDialog spinner = showScanningSpinner();
+
+        scanExecutor.execute(() -> {
+            try {
+                android.graphics.Bitmap studentBitmap = loadScaledBitmap(imageUri);
+                if (studentBitmap == null) {
+                    mainHandler.post(() -> {
+                        spinner.dismiss();
+                        Toast.makeText(this, "Error: Failed to load captured image!", Toast.LENGTH_SHORT).show();
+                    });
+                    return;
+                }
+
+                // 1. Try OpenCV printed-marker detection (fastest & most robust)
+                float[][] contourCorners = null;
+                if (OpenCVHelper.isInitialized()) {
+                    contourCorners = OpenCVHelper.findPrintedMarkers(studentBitmap);
+                }
+
+                if (contourCorners != null) {
+                    // CON #5: Apply rotation correction before perspective transform
+                    android.graphics.Bitmap rotCorrected =
+                            OpenCVHelper.correctRotation(studentBitmap, contourCorners);
+                    // Re-detect markers after rotation correction
+                    if (rotCorrected != studentBitmap) {
+                        float[][] newCorners = OpenCVHelper.findPrintedMarkers(rotCorrected);
+                        if (newCorners != null) {
+                            contourCorners = newCorners;
+                            studentBitmap = rotCorrected;
+                        }
+                    }
+                    android.graphics.Bitmap dewarped =
+                            OpenCVHelper.applyPerspectiveTransformToTemplate(studentBitmap, contourCorners);
+                    if (dewarped != null) {
+                        final android.graphics.Bitmap finalBitmap = dewarped;
+                        mainHandler.post(() -> {
+                            spinner.dismiss();
+                            proceedWithGradingOnMain(imageUri, finalBitmap, activeKey);
+                        });
+                        return;
+                    }
+                }
+
+                // 2. Fallback: strict marker detection at native resolution
+                //    (CON #10: avoid force-scaling to 595x842 which destroys detail)
+                float[][] markers = OMRProcessor.detectMarkersStrict(
+                        android.graphics.Bitmap.createScaledBitmap(studentBitmap, 595, 842, true));
+
+                if (markers != null) {
+                    android.graphics.Bitmap processedBitmap = studentBitmap;
+                    if (OpenCVHelper.isInitialized()) {
+                        float scaleBackX = (float) studentBitmap.getWidth() / 595f;
+                        float scaleBackY = (float) studentBitmap.getHeight() / 842f;
+                        float[][] scaledMarkers = new float[4][2];
+                        for (int i = 0; i < 4; i++) {
+                            scaledMarkers[i][0] = markers[i][0] * scaleBackX;
+                            scaledMarkers[i][1] = markers[i][1] * scaleBackY;
+                        }
+                        // CON #5: Apply rotation correction for fallback path too
+                        android.graphics.Bitmap rotCorrected =
+                                OpenCVHelper.correctRotation(studentBitmap, scaledMarkers);
+                        if (rotCorrected != studentBitmap) {
+                            float[][] newMarkers = OpenCVHelper.findPrintedMarkers(rotCorrected);
+                            if (newMarkers != null) scaledMarkers = newMarkers;
+                            studentBitmap = rotCorrected;
+                        }
+                        android.graphics.Bitmap dewarped =
+                                OpenCVHelper.applyPerspectiveTransformToTemplate(studentBitmap, scaledMarkers);
+                        if (dewarped != null) processedBitmap = dewarped;
+                    }
+                    final android.graphics.Bitmap finalBitmap = processedBitmap;
+                    mainHandler.post(() -> {
+                        spinner.dismiss();
+                        proceedWithGradingOnMain(imageUri, finalBitmap, activeKey);
+                    });
+                    return;
+                }
+
+                // 3. No markers found — ask user on the main thread
+                final android.graphics.Bitmap rawBitmap = studentBitmap;
+                mainHandler.post(() -> {
+                    spinner.dismiss();
+                    new android.app.AlertDialog.Builder(this)
+                            .setTitle("OMR Alignment Failed")
+                            .setMessage("The scanner could not locate the 4 corner markers on the sheet.\n\nPlease ensure:\n• The page is flat and not curled.\n• All 4 corner black boxes are fully visible.\n• There is good lighting and no glare/harsh shadows.")
+                            .setPositiveButton("Try Again", (dialog, which) -> {
+                                if (isLiveCameraSelected) openCamera(); else openGalleryPicker();
+                            })
+                            .setNeutralButton("Grade Anyway", (dialog, which) ->
+                                    proceedWithGradingOnMain(imageUri, rawBitmap, activeKey))
+                            .setNegativeButton("Cancel", null)
+                            .show();
+                });
+
+            } catch (Exception e) {
+                mainHandler.post(() -> {
+                    spinner.dismiss();
+                    Toast.makeText(this, "Scan error: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+                });
             }
-        }
-        
-        int scanQuestions = AnswerKeyManager.normalizeQuestionsCount(selectedQuestions);
-        int scanColumns = AnswerKeyManager.columnsForQuestionCount(scanQuestions);
+        });
+    }
 
-        List<boolean[]> studentOptionsList = OMRProcessor.detectFilledBubbles(
-                enhancedBitmap, 
-                scanQuestions, 
-                scanColumns
-        );
-        String scannedStudentID = OMRProcessor.scanStudentID(enhancedBitmap, activeKey.idDigits);
-        String finalStudentID = scannedStudentID.isEmpty() ? "Blank" : scannedStudentID;
+    /**
+     * Called on the main thread after alignment. Kicks off grading on background thread
+     * then posts the result dialog back to main thread.
+     */
+    private void proceedWithGradingOnMain(Uri imageUri, android.graphics.Bitmap studentBitmap,
+                                          AnswerKeyManager.AnswerKey activeKey) {
+        android.app.ProgressDialog spinner = showScanningSpinner();
+        scanExecutor.execute(() -> {
+            // CON #9: Apply denoise + sharpen preprocessing before bubble detection
+            android.graphics.Bitmap enhancedBitmap = studentBitmap;
+            if (OpenCVHelper.isInitialized()) {
+                // First: contrast enhancement (CLAHE)
+                android.graphics.Bitmap enhanced = OpenCVHelper.enhanceContrast(studentBitmap);
+                if (enhanced != null) enhancedBitmap = enhanced;
+                // Second: denoise + sharpen for noise removal and edge clarity
+                android.graphics.Bitmap denoised = OpenCVHelper.denoiseAndSharpen(enhancedBitmap);
+                if (denoised != null) enhancedBitmap = denoised;
+            }
 
-        showCrossVerificationDialog(imageUri, studentBitmap, activeKey, finalStudentID, studentOptionsList);
+            int scanQuestions = AnswerKeyManager.normalizeQuestionsCount(selectedQuestions);
+            int scanColumns = AnswerKeyManager.columnsForQuestionCount(scanQuestions);
+
+            // Both bubble detection and student-ID scan reuse the same pixel array internally
+            List<boolean[]> studentOptionsList =
+                    OMRProcessor.detectFilledBubbles(enhancedBitmap, scanQuestions, scanColumns);
+            String scannedStudentID = OMRProcessor.scanStudentID(enhancedBitmap, activeKey.idDigits);
+            String finalStudentID = scannedStudentID.isEmpty() ? "Blank" : scannedStudentID;
+
+            final android.graphics.Bitmap finalEnhanced = enhancedBitmap;
+            mainHandler.post(() -> {
+                spinner.dismiss();
+                showCrossVerificationDialog(imageUri, finalEnhanced, activeKey,
+                        finalStudentID, studentOptionsList);
+            });
+        });
     }
 
     @Override
@@ -464,6 +528,13 @@ public class ScanGradeActivity extends AppCompatActivity {
             showResultsDialog();
         }
     }
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
+        scanExecutor.shutdownNow();
+    }
+
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {

@@ -127,6 +127,44 @@ public class OpenCVHelper {
     }
 
     /**
+     * Corrects in-plane rotation detected from the marker positions.
+     * Measures the angle of the line between TL and TR markers and rotates to level.
+     * @param src Source bitmap
+     * @param markers Detected markers [TL, TR, BL, BR] as float[4][2]
+     * @return Rotation-corrected bitmap, or original if correction is unnecessary
+     */
+    public static Bitmap correctRotation(Bitmap src, float[][] markers) {
+        if (!sInitialized || src == null || markers == null || markers.length != 4) return src;
+
+        try {
+            // Measure rotation angle from top markers (TL -> TR should be horizontal)
+            double angle = Math.atan2(
+                markers[1][1] - markers[0][1],  // TR.y - TL.y
+                markers[1][0] - markers[0][0]    // TR.x - TL.x
+            ) * 180.0 / Math.PI;
+
+            // Only correct if rotation is significant (> 0.5 deg) but not extreme (< 15 deg)
+            if (Math.abs(angle) < 0.5 || Math.abs(angle) > 15.0) return src;
+
+            Mat srcMat = bitmapToMat(src);
+            Point center = new Point(srcMat.cols() / 2.0, srcMat.rows() / 2.0);
+            Mat rotMat = Imgproc.getRotationMatrix2D(center, angle, 1.0);
+            Mat rotated = new Mat();
+            Imgproc.warpAffine(srcMat, rotated, rotMat, srcMat.size(),
+                    Imgproc.INTER_LINEAR, Core.BORDER_CONSTANT, new Scalar(255, 255, 255, 255));
+
+            Bitmap result = matToBitmap(rotated);
+            srcMat.release();
+            rotMat.release();
+            rotated.release();
+            return result;
+        } catch (Exception e) {
+            Log.e(TAG, "Rotation correction failed", e);
+            return src;
+        }
+    }
+
+    /**
      * Maps the 4 detected printed markers to their exact ideal coordinates in the 595x842 template.
      * This ensures the resulting image is perfectly aligned for grading.
      */
@@ -243,38 +281,58 @@ public class OpenCVHelper {
         if (centers.size() == 4) {
             return sortCorners(centers.toArray(new Point[0]), w, h);
         }
-        
-        double maxArea = 0;
-        Point[] best4 = null;
-        
-        int n = Math.min(centers.size(), 12); // Limit combinatorics if too many noise squares found
-        for(int i=0; i<n-3; i++) {
-            for(int j=i+1; j<n-2; j++) {
-                for(int k=j+1; k<n-1; k++) {
-                    for(int l=k+1; l<n; l++) {
-                        Point[] pts = {centers.get(i), centers.get(j), centers.get(k), centers.get(l)};
-                        float[][] sorted = sortCorners(pts, w, h);
-                        if (sorted != null) {
-                            double area = 0;
-                            for(int p=0; p<4; p++) {
-                                int q = (p + 1) % 4;
-                                area += sorted[p][0] * sorted[q][1] - sorted[q][0] * sorted[p][1];
-                            }
-                            area = Math.abs(area) / 2.0;
-                            
-                            // A valid marker arrangement usually covers >25% of the image
-                            if (area > maxArea && area > (w * h * 0.25)) {
-                                maxArea = area;
-                                best4 = pts;
-                            }
-                        }
-                    }
-                }
+
+        // Quadrant-based selection: classify each marker into TL/TR/BL/BR
+        // based on image center, then pick the best from each quadrant.
+        // This is O(n) instead of the previous O(n^4) brute-force.
+        double cx = w / 2.0;
+        double cy = h / 2.0;
+
+        // Best candidates per quadrant (0=TL, 1=TR, 2=BL, 3=BR)
+        Point[] best = new Point[4];
+        double[] bestDist = {Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE, Double.MAX_VALUE};
+
+        // Expected corner positions (proportional to image size)
+        double[][] expected = {
+            {w * 0.1, h * 0.1},   // TL
+            {w * 0.9, h * 0.1},   // TR
+            {w * 0.1, h * 0.9},   // BL
+            {w * 0.9, h * 0.9}    // BR
+        };
+
+        for (Point p : centers) {
+            // Determine quadrant
+            int quadrant;
+            if (p.x < cx && p.y < cy) quadrant = 0;      // TL
+            else if (p.x >= cx && p.y < cy) quadrant = 1; // TR
+            else if (p.x < cx && p.y >= cy) quadrant = 2; // BL
+            else quadrant = 3;                             // BR
+
+            // Keep the closest to expected corner position
+            double dist = Math.hypot(p.x - expected[quadrant][0], p.y - expected[quadrant][1]);
+            if (dist < bestDist[quadrant]) {
+                bestDist[quadrant] = dist;
+                best[quadrant] = p;
             }
         }
-        
-        if (best4 != null) {
-            return sortCorners(best4, w, h);
+
+        // Verify we found a marker in each quadrant
+        for (int i = 0; i < 4; i++) {
+            if (best[i] == null) return null;
+        }
+
+        // Validate the quadrilateral covers >25% of image
+        float[][] sorted = sortCorners(best, w, h);
+        if (sorted != null) {
+            double area = 0;
+            for (int p = 0; p < 4; p++) {
+                int q = (p + 1) % 4;
+                area += sorted[p][0] * sorted[q][1] - sorted[q][0] * sorted[p][1];
+            }
+            area = Math.abs(area) / 2.0;
+            if (area > (double)(w * h) * 0.25) {
+                return sorted;
+            }
         }
         return null;
     }
@@ -544,58 +602,177 @@ public class OpenCVHelper {
     }
 
     /**
-     * Enhance image contrast using CLAHE (Contrast Limited Adaptive Histogram Equalization).
-     * Particularly helpful for scans taken in poor lighting conditions.
+     * Fast contrast enhancement using grayscale CLAHE.
+     * Avoids expensive RGB→LAB→RGB triple color-space conversions from the old approach.
+     * Result is an RGBA bitmap with enhanced luminance, indistinguishable from the LAB method
+     * for bubble-detection purposes because OMRProcessor works on luminance anyway.
      *
-     * @param bitmap Input image
-     * @return Contrast-enhanced image
+     * @param bitmap Input image (ARGB_8888)
+     * @return Contrast-enhanced image, or original on failure
      */
     public static Bitmap enhanceContrast(Bitmap bitmap) {
         if (!sInitialized || bitmap == null) return bitmap;
 
         try {
-            Mat src = bitmapToMat(bitmap);
-            Mat lab = new Mat();
-            
-            // Convert to LAB color space
-            Imgproc.cvtColor(src, lab, Imgproc.COLOR_RGBA2RGB);
-            Mat labConverted = new Mat();
-            Imgproc.cvtColor(lab, labConverted, Imgproc.COLOR_RGB2Lab);
+            Mat src = bitmapToMat(bitmap);  // RGBA
 
-            // Split channels
-            List<Mat> labChannels = new ArrayList<>();
-            Core.split(labConverted, labChannels);
+            // Split into 4 channels
+            List<Mat> rgba = new ArrayList<>();
+            Core.split(src, rgba);          // [R, G, B, A]
 
-            // Apply CLAHE to L channel
+            // Build a single-channel luminance = 0.299R + 0.587G + 0.114B
+            Mat gray = new Mat();
+            Imgproc.cvtColor(src, gray, Imgproc.COLOR_RGBA2GRAY);
+
+            // Apply CLAHE to the luminance channel
             org.opencv.imgproc.CLAHE clahe = Imgproc.createCLAHE(2.0, new Size(8, 8));
             Mat enhanced = new Mat();
-            clahe.apply(labChannels.get(0), enhanced);
-            labChannels.set(0, enhanced);
+            clahe.apply(gray, enhanced);
 
-            // Merge back
-            Core.merge(labChannels, labConverted);
+            // Compute per-pixel gain = enhanced / (gray + eps) and apply to each RGB channel
+            // This preserves colour while boosting contrast — same perceptual effect as LAB CLAHE.
+            Mat gain = new Mat();
+            Mat grayF = new Mat();
+            Mat enhancedF = new Mat();
+            gray.convertTo(grayF, CvType.CV_32F);
+            enhanced.convertTo(enhancedF, CvType.CV_32F);
+            // gain = enhanced / (gray + 1)  — add 1 to avoid divide-by-zero
+            Core.add(grayF, new Scalar(1.0), grayF);
+            Core.divide(enhancedF, grayF, gain);
 
-            // Convert back to RGBA
-            Mat rgb = new Mat();
-            Imgproc.cvtColor(labConverted, rgb, Imgproc.COLOR_Lab2RGB);
-            Mat rgba = new Mat();
-            Imgproc.cvtColor(rgb, rgba, Imgproc.COLOR_RGB2RGBA);
+            // Apply gain to R, G, B channels
+            for (int c = 0; c < 3; c++) {
+                Mat chF = new Mat();
+                rgba.get(c).convertTo(chF, CvType.CV_32F);
+                Core.multiply(chF, gain, chF);
+                Core.min(chF, new Scalar(255.0), chF); // clamp
+                chF.convertTo(rgba.get(c), CvType.CV_8U);
+                chF.release();
+            }
 
-            Bitmap output = matToBitmap(rgba);
+            // Merge back to RGBA
+            Mat result = new Mat();
+            Core.merge(rgba, result);
+            Bitmap output = matToBitmap(result);
 
             // Cleanup
             src.release();
-            lab.release();
-            labConverted.release();
-            for (Mat ch : labChannels) ch.release();
+            gray.release();
             enhanced.release();
-            rgb.release();
-            rgba.release();
+            grayF.release();
+            enhancedF.release();
+            gain.release();
+            for (Mat ch : rgba) ch.release();
+            result.release();
 
             return output;
         } catch (Exception e) {
             Log.e(TAG, "Contrast enhancement failed", e);
             return bitmap;
+        }
+    }
+
+    /**
+     * Denoise and sharpen an OMR sheet image for optimal bubble detection.
+     * Pipeline: Non-Local Means Denoising -> Unsharp Mask Sharpening -> Morphological Cleanup
+     * @param bitmap Source image (ideally already perspective-corrected)
+     * @return Preprocessed image with reduced noise and sharper edges, or original on failure
+     */
+    public static Bitmap denoiseAndSharpen(Bitmap bitmap) {
+        if (!sInitialized || bitmap == null) return bitmap;
+
+        try {
+            Mat src = bitmapToMat(bitmap);
+            Mat gray = new Mat();
+            Imgproc.cvtColor(src, gray, Imgproc.COLOR_RGBA2GRAY);
+
+            // 1. Non-Local Means Denoising - preserves edges while removing sensor noise
+            Mat denoised = new Mat();
+            org.opencv.photo.Photo.fastNlMeansDenoising(gray, denoised, 10, 7, 21);
+
+            // 2. Unsharp Mask - sharpen bubble edges for cleaner detection
+            Mat blurred = new Mat();
+            Imgproc.GaussianBlur(denoised, blurred, new Size(0, 0), 3);
+            Mat sharpened = new Mat();
+            Core.addWeighted(denoised, 1.5, blurred, -0.5, 0, sharpened);
+
+            // 3. Morphological opening - remove small noise specks (< bubble size)
+            Mat kernel = Imgproc.getStructuringElement(Imgproc.MORPH_ELLIPSE, new Size(3, 3));
+            Mat cleaned = new Mat();
+            Imgproc.morphologyEx(sharpened, cleaned, Imgproc.MORPH_OPEN, kernel);
+
+            // Convert back to RGBA for Android
+            Mat rgba = new Mat();
+            Imgproc.cvtColor(cleaned, rgba, Imgproc.COLOR_GRAY2RGBA);
+            Bitmap output = matToBitmap(rgba);
+
+            // Cleanup
+            src.release();
+            gray.release();
+            denoised.release();
+            blurred.release();
+            sharpened.release();
+            kernel.release();
+            cleaned.release();
+            rgba.release();
+
+            return output;
+        } catch (Exception e) {
+            Log.e(TAG, "Denoise and sharpen failed", e);
+            return bitmap;
+        }
+    }
+
+    /**
+     * Detects bubble positions on a perspective-corrected OMR sheet using HoughCircles.
+     * Returns a list of detected circle centers, or null if detection fails.
+     * Falls back gracefully - caller should use hard-coded positions if this returns null.
+     *
+     * @param bitmap Perspective-corrected OMR sheet (expected ~595x842)
+     * @param expectedBubbleRadius Expected bubble radius in pixels
+     * @return List of Point objects representing detected bubble centers, or null
+     */
+    public static List<Point> detectBubblePositions(Bitmap bitmap, int expectedBubbleRadius) {
+        if (!sInitialized || bitmap == null) return null;
+
+        try {
+            Mat src = bitmapToMat(bitmap);
+            Mat gray = new Mat();
+            Imgproc.cvtColor(src, gray, Imgproc.COLOR_RGBA2GRAY);
+
+            // Blur to reduce noise for HoughCircles
+            Imgproc.GaussianBlur(gray, gray, new Size(5, 5), 2);
+
+            Mat circles = new Mat();
+            int minRadius = Math.max(2, (int)(expectedBubbleRadius * 0.5));
+            int maxRadius = Math.max(5, (int)(expectedBubbleRadius * 1.8));
+            int minDist = Math.max(8, (int)(expectedBubbleRadius * 1.5));
+
+            Imgproc.HoughCircles(gray, circles, Imgproc.HOUGH_GRADIENT,
+                    1.2, minDist, 100, 20, minRadius, maxRadius);
+
+            if (circles.cols() < 10) {
+                // Too few circles detected - likely not reliable
+                src.release();
+                gray.release();
+                circles.release();
+                return null;
+            }
+
+            List<Point> bubbleCenters = new ArrayList<>();
+            for (int i = 0; i < circles.cols(); i++) {
+                double[] data = circles.get(0, i);
+                bubbleCenters.add(new Point(data[0], data[1]));
+            }
+
+            src.release();
+            gray.release();
+            circles.release();
+
+            return bubbleCenters;
+        } catch (Exception e) {
+            Log.e(TAG, "HoughCircles bubble detection failed", e);
+            return null;
         }
     }
 

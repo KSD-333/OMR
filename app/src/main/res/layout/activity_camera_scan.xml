@@ -26,6 +26,19 @@
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent" />
 
+    <!-- Camera Target Guide Frame (A4 Ratio) -->
+    <View
+        android:id="@+id/cameraGuideFrame"
+        android:layout_width="0dp"
+        android:layout_height="0dp"
+        android:layout_marginHorizontal="40dp"
+        android:background="@drawable/bg_camera_viewport"
+        app:layout_constraintDimensionRatio="1:1.414"
+        app:layout_constraintTop_toTopOf="parent"
+        app:layout_constraintBottom_toBottomOf="parent"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintEnd_toEndOf="parent" />
+
     <!-- Scanner laser line animation with glow (Full Width) -->
     <View
         android:id="@+id/cameraLaserLine"

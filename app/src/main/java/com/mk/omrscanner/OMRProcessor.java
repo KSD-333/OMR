@@ -10,10 +10,20 @@ public class OMRProcessor {
 
     private static final String TAG = "OMRProcessor";
 
+    /** BT.709 perceptually-weighted luminance — critical for pencil mark detection. */
+    private static int bt709Luminance(int pixel) {
+        int r = (pixel >> 16) & 0xFF;
+        int g = (pixel >> 8) & 0xFF;
+        int b = pixel & 0xFF;
+        return (int)(0.2126 * r + 0.7152 * g + 0.0722 * b);
+    }
+
+    /** Bubble radius constant matching the PDF generator (ConfigureSheetActivity L488). */
+    private static final float PDF_BUBBLE_RADIUS_PT = 6.0f;
+
     /**
      * Analyzes an OMR sheet bitmap to detect which bubbles are filled.
-     * Uses 4-corner marker detection to align the coordinate system for high accuracy.
-     * If OpenCV is available, applies perspective transform first for best results.
+     * Uses bulk getPixels() for maximum performance instead of per-pixel getPixel() calls.
      */
     public static List<boolean[]> detectFilledBubbles(Bitmap bitmap, int totalQuestions, int columns) {
         List<boolean[]> results = new ArrayList<>();
@@ -21,28 +31,23 @@ public class OMRProcessor {
         totalQuestions = AnswerKeyManager.normalizeQuestionsCount(totalQuestions);
         columns = AnswerKeyManager.columnsForQuestionCount(totalQuestions);
 
-        // Use the bitmap directly — contrast enhancement should be done ONCE by the caller
-        // to avoid double-enhancement artifacts
-        Bitmap processedBitmap = bitmap;
+        // ── FAST PATH: bulk-load all pixels into a flat int[] array once ──────────────────
+        final int bw = bitmap.getWidth();
+        final int bh = bitmap.getHeight();
+        final int[] pixels = new int[bw * bh];
+        bitmap.getPixels(pixels, 0, bw, 0, 0, bw, bh);
 
-        // 1. Find the 4 corner markers in the actual image for registration
-        // Ideal markers centers in 595x842 PDF points
+        // Ideal markers in 595×842 PDF point space (after perspective correction the markers
+        // are physically at these exact coordinates — no secondary search needed).
         float[][] idealMarkers = {
             {40f, 50f},   // Top-Left
             {555f, 50f},  // Top-Right
             {40f, 792f},  // Bottom-Left
             {555f, 792f}  // Bottom-Right
         };
+        // realMarkers == idealMarkers after applyPerspectiveTransformToTemplate
+        float[][] realMarkers = idealMarkers;
 
-        float[][] realMarkers = new float[4][2];
-        for (int i = 0; i < 4; i++) {
-            // Since we use applyPerspectiveTransformToTemplate, the markers are physically locked 
-            // to these exact coordinates. No secondary search is needed, which prevents snapping to shadows.
-            realMarkers[i][0] = idealMarkers[i][0];
-            realMarkers[i][1] = idealMarkers[i][1];
-        }
-
-        // 2. Map questions using the adjusted coordinate system
         int qPerCol = (int) Math.ceil((double) totalQuestions / columns);
 
         for (int q = 0; q < totalQuestions; q++) {
@@ -75,11 +80,8 @@ public class OMRProcessor {
 
             for (int b = 0; b < 4; b++) {
                 float idealX = bubbleStart + (b * bubblePitch);
-                
-                // Map ideal PDF point to actual bitmap pixel using 4-corner bilinear interpolation
-                float[] pixelCoord = mapIdealToReal(idealX, rowY, idealMarkers, realMarkers);
-                
-                options[b] = isBubbleFilledProper(processedBitmap, (int)pixelCoord[0], (int)pixelCoord[1]);
+                float[] px = mapIdealToReal(idealX, rowY, idealMarkers, realMarkers);
+                options[b] = isBubbleFilledFast(pixels, bw, bh, (int) px[0], (int) px[1]);
             }
             results.add(options);
         }
@@ -90,77 +92,75 @@ public class OMRProcessor {
     /**
      * Strictly detects if all 4 OMR sheet corner markers are present and correctly aligned.
      * Returns the 4 real marker coordinates if valid, otherwise returns null.
+     * Uses bulk pixel array for speed.
      */
     public static float[][] detectMarkersStrict(Bitmap bitmap) {
         if (bitmap == null) return null;
 
+        final int bw = bitmap.getWidth();
+        final int bh = bitmap.getHeight();
+        final int[] pixels = new int[bw * bh];
+        bitmap.getPixels(pixels, 0, bw, 0, 0, bw, bh);
+
         float[][] idealMarkers = {
-            {40f, 50f},   // Top-Left
-            {555f, 50f},  // Top-Right
-            {40f, 792f},  // Bottom-Left
-            {555f, 792f}  // Bottom-Right
+            {40f, 50f},
+            {555f, 50f},
+            {40f, 792f},
+            {555f, 792f}
         };
 
         float[][] realMarkers = new float[4][2];
-        float scaleX = bitmap.getWidth() / 595f;
-        float scaleY = bitmap.getHeight() / 842f;
+        float scaleX = bw / 595f;
+        float scaleY = bh / 842f;
 
         for (int i = 0; i < 4; i++) {
             float idealX = idealMarkers[i][0];
             float idealY = idealMarkers[i][1];
 
-            // Increased search radius to handle paper at varying distances
-            int searchR = (int)(120 * scaleX);
-            int centerX = (int)(idealX * scaleX);
-            int centerY = (int)(idealY * scaleY);
+            int searchR = (int) (120 * scaleX);
+            int centerX = (int) (idealX * scaleX);
+            int centerY = (int) (idealY * scaleY);
 
-            // Guard against solid black lens cover or total darkness (average brightness < 80)
-            double windowAvg = getAverageLuminance(bitmap, centerX, centerY, searchR);
-            if (windowAvg < 80) {
-                return null; 
-            }
+            double windowAvg = getAverageLuminanceFast(pixels, bw, bh, centerX, centerY, searchR);
+            if (windowAvg < 80) return null;
 
             long sumX = 0, sumY = 0, count = 0;
 
-            for (int x = centerX - searchR; x <= centerX + searchR; x++) {
-                for (int y = centerY - searchR; y <= centerY + searchR; y++) {
-                    if (x >= 0 && x < bitmap.getWidth() && y >= 0 && y < bitmap.getHeight()) {
-                        int pixel = bitmap.getPixel(x, y);
-                        // Relaxed threshold to capture dark gray pen/ink markers
-                        if ((Color.red(pixel) + Color.green(pixel) + Color.blue(pixel)) / 3 < 130) {
-                            sumX += x;
-                            sumY += y;
-                            count++;
-                        }
+            int x0 = Math.max(0, centerX - searchR);
+            int x1 = Math.min(bw - 1, centerX + searchR);
+            int y0 = Math.max(0, centerY - searchR);
+            int y1 = Math.min(bh - 1, centerY + searchR);
+
+            for (int y = y0; y <= y1; y++) {
+                final int rowOffset = y * bw;
+                for (int x = x0; x <= x1; x++) {
+                    int p = pixels[rowOffset + x];
+                    if (bt709Luminance(p) < 130) {
+                        sumX += x;
+                        sumY += y;
+                        count++;
                     }
                 }
             }
 
-            // Expanded range: A valid OMR dot should occupy between 5 and 2500 pixels at scaled resolution
             double minPixels = 5 * scaleX * scaleY;
             double maxPixels = 2500 * scaleX * scaleY;
-            if (count < minPixels || count > maxPixels) {
-                return null; // Dot missing, or size is invalid (too big/noisy)
-            }
+            if (count < minPixels || count > maxPixels) return null;
 
-            realMarkers[i][0] = (float)sumX / count;
-            realMarkers[i][1] = (float)sumY / count;
+            realMarkers[i][0] = (float) sumX / count;
+            realMarkers[i][1] = (float) sumY / count;
         }
 
-        // Geometry verification to confirm page alignment inside frame
-        float w = bitmap.getWidth();
-        float h = bitmap.getHeight();
-
+        // Geometry verification
+        float w = bw;
+        float h = bh;
         float dxTop = realMarkers[1][0] - realMarkers[0][0];
         float dyTop = Math.abs(realMarkers[1][1] - realMarkers[0][1]);
         float dxLeft = Math.abs(realMarkers[2][0] - realMarkers[0][0]);
         float dyLeft = realMarkers[2][1] - realMarkers[0][1];
 
-        // Relaxed separation constraint to 35% for capturing from distance
         if (dxTop < w * 0.35f) return null;
         if (dyLeft < h * 0.35f) return null;
-
-        // Allow up to 18% tilt for real-world conditions
         if (dyTop > w * 0.18f) return null;
         if (dxLeft > h * 0.18f) return null;
 
@@ -170,45 +170,50 @@ public class OMRProcessor {
     /**
      * Detects which of the 4 corner markers are individually present.
      * Returns a boolean[4] indicating [TL, TR, BL, BR] found status.
-     * Used for per-corner visual feedback in the camera UI.
+     * Uses bulk pixel array for speed.
      */
     public static boolean[] detectMarkersIndividual(Bitmap bitmap) {
         boolean[] found = new boolean[4];
         if (bitmap == null) return found;
 
+        final int bw = bitmap.getWidth();
+        final int bh = bitmap.getHeight();
+        final int[] pixels = new int[bw * bh];
+        bitmap.getPixels(pixels, 0, bw, 0, 0, bw, bh);
+
         float[][] idealMarkers = {
-            {40f, 50f},   // Top-Left
-            {555f, 50f},  // Top-Right
-            {40f, 792f},  // Bottom-Left
-            {555f, 792f}  // Bottom-Right
+            {40f, 50f},
+            {555f, 50f},
+            {40f, 792f},
+            {555f, 792f}
         };
 
-        float scaleX = bitmap.getWidth() / 595f;
-        float scaleY = bitmap.getHeight() / 842f;
+        float scaleX = bw / 595f;
+        float scaleY = bh / 842f;
 
         for (int i = 0; i < 4; i++) {
             float idealX = idealMarkers[i][0];
             float idealY = idealMarkers[i][1];
 
-            int searchR = (int)(120 * scaleX);
-            int centerX = (int)(idealX * scaleX);
-            int centerY = (int)(idealY * scaleY);
+            int searchR = (int) (120 * scaleX);
+            int centerX = (int) (idealX * scaleX);
+            int centerY = (int) (idealY * scaleY);
 
-            // Fast brightness check
-            double windowAvg = getAverageLuminance(bitmap, centerX, centerY, searchR);
-            if (windowAvg < 80) {
-                continue;
-            }
+            double windowAvg = getAverageLuminanceFast(pixels, bw, bh, centerX, centerY, searchR);
+            if (windowAvg < 80) continue;
 
             long count = 0;
+            int x0 = Math.max(0, centerX - searchR);
+            int x1 = Math.min(bw - 1, centerX + searchR);
+            int y0 = Math.max(0, centerY - searchR);
+            int y1 = Math.min(bh - 1, centerY + searchR);
 
-            for (int x = centerX - searchR; x <= centerX + searchR; x++) {
-                for (int y = centerY - searchR; y <= centerY + searchR; y++) {
-                    if (x >= 0 && x < bitmap.getWidth() && y >= 0 && y < bitmap.getHeight()) {
-                        int pixel = bitmap.getPixel(x, y);
-                        if ((Color.red(pixel) + Color.green(pixel) + Color.blue(pixel)) / 3 < 130) {
-                            count++;
-                        }
+            for (int y = y0; y <= y1; y++) {
+                final int rowOffset = y * bw;
+                for (int x = x0; x <= x1; x++) {
+                    int p = pixels[rowOffset + x];
+                    if (bt709Luminance(p) < 130) {
+                        count++;
                     }
                 }
             }
@@ -224,8 +229,7 @@ public class OMRProcessor {
     }
 
     /**
-     * Loosely checks if at least 2 OMR corner markers are present,
-     * indicating a sheet is roughly in view.
+     * Loosely checks if at least 2 OMR corner markers are present.
      */
     public static boolean detectMarkersLoose(Bitmap bitmap) {
         boolean[] individual = detectMarkersIndividual(bitmap);
@@ -237,137 +241,70 @@ public class OMRProcessor {
     }
 
     /**
-     * Finds the darkest centroid in a window around the expected marker location.
-     */
-    private static float[] findMarkerCentroid(Bitmap bitmap, float idealX, float idealY) {
-        int w = bitmap.getWidth();
-        int h = bitmap.getHeight();
-        float scaleX = w / 595f;
-        float scaleY = h / 842f;
-
-        // Define the corner target point we want to be closest to
-        float targetX = 0;
-        float targetY = 0;
-        if (idealX > 300) targetX = w;
-        if (idealY > 400) targetY = h;
-
-        int searchR = (int) (180 * scaleX);
-        int centerX = (int) (idealX * scaleX);
-        int centerY = (int) (idealY * scaleY);
-
-        int closestX = -1;
-        int closestY = -1;
-        double minDistance = Double.MAX_VALUE;
-
-        // 1. Find the dark pixel closest to the page corner in the search window
-        for (int x = centerX - searchR; x <= centerX + searchR; x++) {
-            for (int y = centerY - searchR; y <= centerY + searchR; y++) {
-                if (x >= 0 && x < w && y >= 0 && y < h) {
-                    int pixel = bitmap.getPixel(x, y);
-                    int luminance = (Color.red(pixel) + Color.green(pixel) + Color.blue(pixel)) / 3;
-
-                    if (luminance < 110) {
-                        double dist = Math.pow(x - targetX, 2) + Math.pow(y - targetY, 2);
-                        if (dist < minDistance) {
-                            minDistance = dist;
-                            closestX = x;
-                            closestY = y;
-                        }
-                    }
-                }
-            }
-        }
-
-        // If no dark pixel found, fall back to expected center
-        if (closestX == -1) {
-            return new float[]{centerX, centerY};
-        }
-
-        // 2. Compute the centroid of dark pixels in a small window around the closest pixel
-        long sumX = 0, sumY = 0, count = 0;
-        int r = (int) (18 * scaleX);
-        for (int x = closestX - r; x <= closestX + r; x++) {
-            for (int y = closestY - r; y <= closestY + r; y++) {
-                // BUG FIX: was `y < w`, now correctly `y < h`
-                if (x >= 0 && x < w && y >= 0 && y < h) {
-                    int pixel = bitmap.getPixel(x, y);
-                    int luminance = (Color.red(pixel) + Color.green(pixel) + Color.blue(pixel)) / 3;
-                    if (luminance < 125) {
-                        sumX += x;
-                        sumY += y;
-                        count++;
-                    }
-                }
-            }
-        }
-
-        if (count == 0) return new float[]{closestX, closestY};
-        return new float[]{(float) sumX / count, (float) sumY / count};
-    }
-
-    /**
      * Uses bilinear mapping to adjust ideal coordinates to the actual scanned image perspective.
      */
     private static float[] mapIdealToReal(float x, float y, float[][] ideal, float[][] real) {
-        // Normalize x, y to [0, 1] relative to the ideal marker bounds
         float u = (x - ideal[0][0]) / (ideal[1][0] - ideal[0][0]);
         float v = (y - ideal[0][1]) / (ideal[2][1] - ideal[0][1]);
 
-        // Bilinear interpolation between the 4 detected marker points
-        float realX = (1-u)*(1-v)*real[0][0] + u*(1-v)*real[1][0] + (1-u)*v*real[2][0] + u*v*real[3][0];
-        float realY = (1-u)*(1-v)*real[0][1] + u*(1-v)*real[1][1] + (1-u)*v*real[2][1] + u*v*real[3][1];
+        float realX = (1 - u) * (1 - v) * real[0][0] + u * (1 - v) * real[1][0]
+                + (1 - u) * v * real[2][0] + u * v * real[3][0];
+        float realY = (1 - u) * (1 - v) * real[0][1] + u * (1 - v) * real[1][1]
+                + (1 - u) * v * real[2][1] + u * v * real[3][1];
 
         return new float[]{realX, realY};
     }
 
     /**
-     * Strictly verifies if a bubble is properly filled in a round and dark shape.
-     * Evaluates fill ratio and uniformity/roundness across quadrants.
+     * Fast bubble-fill check using a pre-loaded pixel array.
+     * Replaces the old isBubbleFilledProper(Bitmap,int,int) which called getPixel() in a loop.
      */
-    public static boolean isBubbleFilledProper(Bitmap bitmap, int centerX, int centerY) {
-        float scale = bitmap.getWidth() / 595f;
-        int innerR = Math.max(2, (int)(5.0f * scale)); // Check ~80% of the bubble interior for reliable detection
-        int outerR = Math.max(4, (int)(8f * scale));   // Sample the white paper outside — stays within column bounds
+    public static boolean isBubbleFilledFast(int[] pixels, int bw, int bh, int centerX, int centerY) {
+        float scale = bw / 595f;
+        // Derive sampling radius from the actual PDF bubble size (6pt radius = 12pt diameter)
+        float bubbleDiameterPx = (PDF_BUBBLE_RADIUS_PT * 2f / 595f) * bw;
+        int innerR = Math.max(3, (int)(bubbleDiameterPx * 0.38f)); // Sample ~76% of bubble diameter
+        int outerR = Math.max(5, (int)(bubbleDiameterPx * 0.75f)); // Background ring outside bubble
 
-        // 1. Get reference background luminance from the surrounding area
-        double outerAvg = getAverageLuminance(bitmap, centerX, centerY, outerR);
-
-        // 2. Define adaptive threshold based on background brightness
-        // A pixel is "dark" if it is at least 45% darker than the background paper
-        // This makes it immune to shadows which darken both the paper and the bubble equally.
-        int adaptiveThreshold = (int)(outerAvg * 0.55);
-        // Absolute minimum threshold to avoid detecting noise on very bright paper
-        if (adaptiveThreshold < 40) adaptiveThreshold = 40;
+        double outerAvg = getAverageLuminanceFast(pixels, bw, bh, centerX, centerY, outerR);
+        // Use a wider background ring for more stable reference
+        int bgR = Math.max(outerR + 2, (int)(bubbleDiameterPx * 0.90f));
+        double bgAvg = getAverageLuminanceFast(pixels, bw, bh, centerX, centerY, bgR);
+        // Dynamic threshold: 60% of local background with a floor relative to contrast range
+        int adaptiveThreshold = (int)(bgAvg * 0.60);
+        int dynamicFloor = Math.max(40, (int)(bgAvg * 0.25)); // Floor scales with lighting
+        if (adaptiveThreshold < dynamicFloor) adaptiveThreshold = dynamicFloor;
 
         int darkCount = 0;
         int totalCount = 0;
-
         int[] quadDark = new int[4];
         int[] quadTotal = new int[4];
 
-        for (int dx = -innerR; dx <= innerR; dx++) {
-            for (int dy = -innerR; dy <= innerR; dy++) {
-                if (dx*dx + dy*dy <= innerR*innerR) {
+        int r2 = innerR * innerR;
+        int x0 = Math.max(0, centerX - innerR);
+        int x1 = Math.min(bw - 1, centerX + innerR);
+        int y0 = Math.max(0, centerY - innerR);
+        int y1 = Math.min(bh - 1, centerY + innerR);
+
+        for (int dy = y0 - centerY; dy <= y1 - centerY; dy++) {
+            int y = centerY + dy;
+            final int rowOffset = y * bw;
+            for (int dx = x0 - centerX; dx <= x1 - centerX; dx++) {
+                if (dx * dx + dy * dy <= r2) {
                     int x = centerX + dx;
-                    int y = centerY + dy;
-                    if (x >= 0 && x < bitmap.getWidth() && y >= 0 && y < bitmap.getHeight()) {
-                        int p = bitmap.getPixel(x, y);
-                        int luminance = (Color.red(p) + Color.green(p) + Color.blue(p)) / 3;
+                    int p = pixels[rowOffset + x];
+                    int luminance = bt709Luminance(p);
 
-                        totalCount++;
-                        
-                        // Determine quadrant: 0=TL, 1=TR, 2=BL, 3=BR
-                        int quad = 0;
-                        if (dx >= 0 && dy < 0) quad = 1;
-                        else if (dx < 0 && dy >= 0) quad = 2;
-                        else if (dx >= 0 && dy >= 0) quad = 3;
+                    totalCount++;
+                    int quad = 0;
+                    if (dx >= 0 && dy < 0) quad = 1;
+                    else if (dx < 0 && dy >= 0) quad = 2;
+                    else if (dx >= 0 && dy >= 0) quad = 3;
 
-                        quadTotal[quad]++;
-                        
-                        if (luminance < adaptiveThreshold) {
-                            darkCount++;
-                            quadDark[quad]++;
-                        }
+                    quadTotal[quad]++;
+                    if (luminance < adaptiveThreshold) {
+                        darkCount++;
+                        quadDark[quad]++;
                     }
                 }
             }
@@ -377,13 +314,10 @@ public class OMRProcessor {
 
         double overallRatio = (double) darkCount / totalCount;
 
-        // Verify uniformity (roundness):
-        // Each quadrant must have a significant amount of dark pixels.
         boolean isUniform = true;
         for (int i = 0; i < 4; i++) {
             if (quadTotal[i] > 0) {
                 double qRatio = (double) quadDark[i] / quadTotal[i];
-                // Quadrant fill must be at least 15% to ensure it's not a single line or scribble
                 if (qRatio < 0.15) {
                     isUniform = false;
                     break;
@@ -391,38 +325,43 @@ public class OMRProcessor {
             }
         }
 
-        // Return true if it satisfies fill density and uniformity, or is extremely dark overall
         return (overallRatio >= 0.28 && isUniform) || (overallRatio > 0.55);
     }
 
     /**
+     * Legacy overload — creates a pixel array on demand.
+     * Prefer isBubbleFilledFast(int[], int, int, int, int) when you already have the array.
+     */
+    public static boolean isBubbleFilledProper(Bitmap bitmap, int centerX, int centerY) {
+        if (bitmap == null) return false;
+        final int bw = bitmap.getWidth();
+        final int bh = bitmap.getHeight();
+        final int[] pixels = new int[bw * bh];
+        bitmap.getPixels(pixels, 0, bw, 0, 0, bw, bh);
+        return isBubbleFilledFast(pixels, bw, bh, centerX, centerY);
+    }
+
+    /**
      * Scans the Student ID section of the OMR sheet.
-     * @param bitmap The perspective-corrected 595x842 bitmap
-     * @param maxDigits Number of ID digit columns to scan (4 or 6)
-     * @return The detected Student ID string
+     * Uses bulk pixel array for fast lookup.
      */
     public static String scanStudentID(Bitmap bitmap, int maxDigits) {
         if (bitmap == null) return "";
 
+        final int bw = bitmap.getWidth();
+        final int bh = bitmap.getHeight();
+        final int[] pixels = new int[bw * bh];
+        bitmap.getPixels(pixels, 0, bw, 0, 0, bw, bh);
+
         float[][] idealMarkers = {
-            {40f, 50f},   // Top-Left
-            {555f, 50f},  // Top-Right
-            {40f, 792f},  // Bottom-Left
-            {555f, 792f}  // Bottom-Right
+            {40f, 50f},
+            {555f, 50f},
+            {40f, 792f},
+            {555f, 792f}
         };
+        float[][] realMarkers = idealMarkers;
 
-        float[][] realMarkers = new float[4][2];
-        for (int i = 0; i < 4; i++) {
-            // Since we use applyPerspectiveTransformToTemplate, the markers are physically locked 
-            // to these exact coordinates. No secondary search is needed.
-            realMarkers[i][0] = idealMarkers[i][0];
-            realMarkers[i][1] = idealMarkers[i][1];
-        }
-
-        // Clamp to valid range
-        if (maxDigits != 4 && maxDigits != 6) {
-            maxDigits = 6;
-        }
+        if (maxDigits != 4 && maxDigits != 6) maxDigits = 6;
 
         StringBuilder sb = new StringBuilder();
 
@@ -434,8 +373,7 @@ public class OMRProcessor {
             for (int row = 0; row < 10; row++) {
                 float idealY = 76f + (row * 11f);
                 float[] pixelCoord = mapIdealToReal(idealX, idealY, idealMarkers, realMarkers);
-                
-                if (isBubbleFilledProper(bitmap, (int)pixelCoord[0], (int)pixelCoord[1])) {
+                if (isBubbleFilledFast(pixels, bw, bh, (int) pixelCoord[0], (int) pixelCoord[1])) {
                     selectedRow = row;
                     filledCount++;
                 }
@@ -459,18 +397,22 @@ public class OMRProcessor {
     }
 
     /**
-     * Compute average luminance of pixels within a square window centered at (cx, cy).
+     * Fast average luminance using a pre-loaded pixel array.
+     * Replaces per-pixel getPixel() calls in getAverageLuminance.
      */
-    private static double getAverageLuminance(Bitmap bitmap, int cx, int cy, int r) {
+    static double getAverageLuminanceFast(int[] pixels, int bw, int bh, int cx, int cy, int r) {
         long sum = 0;
         int count = 0;
-        for (int x = cx - r; x <= cx + r; x++) {
-            for (int y = cy - r; y <= cy + r; y++) {
-                if (x >= 0 && x < bitmap.getWidth() && y >= 0 && y < bitmap.getHeight()) {
-                    int p = bitmap.getPixel(x, y);
-                    sum += (Color.red(p) + Color.green(p) + Color.blue(p)) / 3;
-                    count++;
-                }
+        int x0 = Math.max(0, cx - r);
+        int x1 = Math.min(bw - 1, cx + r);
+        int y0 = Math.max(0, cy - r);
+        int y1 = Math.min(bh - 1, cy + r);
+        for (int y = y0; y <= y1; y++) {
+            final int rowOffset = y * bw;
+            for (int x = x0; x <= x1; x++) {
+                int p = pixels[rowOffset + x];
+                sum += bt709Luminance(p);
+                count++;
             }
         }
         return count == 0 ? 0 : (double) sum / count;
@@ -479,24 +421,25 @@ public class OMRProcessor {
     /**
      * Generates an image overlaying the grading results on the scanned sheet.
      */
-    public static Bitmap generateGradedImage(Bitmap source, List<boolean[]> correctOptionsList, List<boolean[]> studentOptionsList, int columns) {
+    public static Bitmap generateGradedImage(Bitmap source, List<boolean[]> correctOptionsList,
+                                             List<boolean[]> studentOptionsList, int columns) {
         if (source == null) return null;
-        
+
         Bitmap output = source.copy(Bitmap.Config.ARGB_8888, true);
         android.graphics.Canvas canvas = new android.graphics.Canvas(output);
-        
+
         android.graphics.Paint paintGreen = new android.graphics.Paint();
-        paintGreen.setColor(Color.parseColor("#10B981")); // Green
+        paintGreen.setColor(Color.parseColor("#10B981"));
         paintGreen.setStyle(android.graphics.Paint.Style.FILL);
         paintGreen.setAntiAlias(true);
 
         android.graphics.Paint paintRed = new android.graphics.Paint();
-        paintRed.setColor(Color.parseColor("#EF4444")); // Red
+        paintRed.setColor(Color.parseColor("#EF4444"));
         paintRed.setStyle(android.graphics.Paint.Style.FILL);
         paintRed.setAntiAlias(true);
 
         android.graphics.Paint paintYellow = new android.graphics.Paint();
-        paintYellow.setColor(Color.parseColor("#FBBF24")); // Yellow
+        paintYellow.setColor(Color.parseColor("#FBBF24"));
         paintYellow.setStyle(android.graphics.Paint.Style.STROKE);
         paintYellow.setStrokeWidth(5f);
         paintYellow.setAntiAlias(true);
@@ -546,30 +489,27 @@ public class OMRProcessor {
 
             for (int b = 0; b < 4; b++) {
                 float idealX = bubbleStart + (b * bubblePitch);
-                
-                // Assuming the source is perfectly aligned/dewarped, we use the ideal coordinates scaled
                 float cx = idealX * scaleX;
                 float cy = rowY * scaleY;
-                float radius = 7f * scaleX; // Base radius
+                float radius = 7f * scaleX;
 
                 boolean isCorrect = correctOptions[b];
                 boolean isMarked = studentOptions[b];
 
                 if (isMarked && isCorrect) {
-                    // Green solid circle with white tick
                     canvas.drawCircle(cx, cy, radius, paintGreen);
                     android.graphics.Path path = new android.graphics.Path();
-                    path.moveTo(cx - radius*0.4f, cy);
-                    path.lineTo(cx - radius*0.1f, cy + radius*0.4f);
-                    path.lineTo(cx + radius*0.5f, cy - radius*0.4f);
+                    path.moveTo(cx - radius * 0.4f, cy);
+                    path.lineTo(cx - radius * 0.1f, cy + radius * 0.4f);
+                    path.lineTo(cx + radius * 0.5f, cy - radius * 0.4f);
                     canvas.drawPath(path, paintWhiteIcon);
                 } else if (isMarked && !isCorrect) {
-                    // Red solid circle with white cross
                     canvas.drawCircle(cx, cy, radius, paintRed);
-                    canvas.drawLine(cx - radius*0.4f, cy - radius*0.4f, cx + radius*0.4f, cy + radius*0.4f, paintWhiteIcon);
-                    canvas.drawLine(cx + radius*0.4f, cy - radius*0.4f, cx - radius*0.4f, cy + radius*0.4f, paintWhiteIcon);
+                    canvas.drawLine(cx - radius * 0.4f, cy - radius * 0.4f,
+                            cx + radius * 0.4f, cy + radius * 0.4f, paintWhiteIcon);
+                    canvas.drawLine(cx + radius * 0.4f, cy - radius * 0.4f,
+                            cx - radius * 0.4f, cy + radius * 0.4f, paintWhiteIcon);
                 } else if (!isMarked && isCorrect) {
-                    // Yellow outlined circle for missed answer
                     canvas.drawCircle(cx, cy, radius, paintYellow);
                 }
             }
