@@ -75,6 +75,9 @@ public class ScanGradeActivity extends AppCompatActivity {
 
     private boolean isLiveCameraSelected = true; // default scan mode
 
+    // CON #13: Batch scanning counter — tracks how many sheets scanned this session
+    private int batchScanCount = 0;
+
     @Override
     protected void onSaveInstanceState(@NonNull Bundle outState) {
         super.onSaveInstanceState(outState);
@@ -869,9 +872,10 @@ public class ScanGradeActivity extends AppCompatActivity {
                     System.currentTimeMillis()
             );
             OMRResultsManager.saveResult(this, result);
+            batchScanCount++;
             verifyDialog.dismiss();
             Toast.makeText(this, "Scan graded & saved successfully!", Toast.LENGTH_SHORT).show();
-            showResultsDialog();
+            showScanNextDialog();
         });
 
         verifyDialog.show();
@@ -1011,6 +1015,36 @@ public class ScanGradeActivity extends AppCompatActivity {
                 }
             }
         }
+    }
+
+    /**
+     * CON #13: Post-save dialog with batch scanning support.
+     * Offers "Scan Next" to immediately re-open camera, or view results.
+     */
+    private void showScanNextDialog() {
+        android.app.AlertDialog.Builder builder = new android.app.AlertDialog.Builder(this, android.R.style.Theme_Material_Dialog_Alert);
+        builder.setTitle("\u2705 Saved! (" + batchScanCount + " scanned this session)");
+        builder.setMessage("Would you like to scan another sheet?");
+
+        builder.setPositiveButton("\uD83D\uDCF7 Scan Next", (dialog, which) -> {
+            dialog.dismiss();
+            // Re-open camera for next sheet
+            if (isLiveCameraSelected) {
+                checkCameraPermissionAndStart();
+            } else {
+                openGalleryPicker();
+            }
+        });
+
+        builder.setNeutralButton("View Results", (dialog, which) -> {
+            dialog.dismiss();
+            showResultsDialog();
+        });
+
+        builder.setNegativeButton("Done", (dialog, which) -> dialog.dismiss());
+
+        builder.setCancelable(true);
+        builder.show();
     }
 
     private void showResultsDialog() {

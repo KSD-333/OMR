@@ -344,6 +344,8 @@ public class OMRProcessor {
     /**
      * Scans the Student ID section of the OMR sheet.
      * Uses bulk pixel array for fast lookup.
+     * CON #14: Implements darkest-bubble selection for multi-marked columns
+     *          and '_' placeholder for unfilled digits.
      */
     public static String scanStudentID(Bitmap bitmap, int maxDigits) {
         if (bitmap == null) return "";
@@ -367,22 +369,45 @@ public class OMRProcessor {
 
         for (int col = 0; col < maxDigits; col++) {
             float idealX = 456f + (col * 14f);
-            int selectedRow = -1;
-            int filledCount = 0;
+            List<Integer> filledRows = new ArrayList<>();
+            double[] rowLuminances = new double[10];
 
             for (int row = 0; row < 10; row++) {
                 float idealY = 76f + (row * 11f);
                 float[] pixelCoord = mapIdealToReal(idealX, idealY, idealMarkers, realMarkers);
-                if (isBubbleFilledFast(pixels, bw, bh, (int) pixelCoord[0], (int) pixelCoord[1])) {
-                    selectedRow = row;
-                    filledCount++;
+                int cx = (int) pixelCoord[0];
+                int cy = (int) pixelCoord[1];
+
+                if (isBubbleFilledFast(pixels, bw, bh, cx, cy)) {
+                    filledRows.add(row);
                 }
+                // Store the average luminance for each bubble (lower = darker = more filled)
+                float scale = bw / 595f;
+                float bubbleDiameterPx = (PDF_BUBBLE_RADIUS_PT * 2f / 595f) * bw;
+                int innerR = Math.max(3, (int)(bubbleDiameterPx * 0.38f));
+                rowLuminances[row] = getAverageLuminanceFast(pixels, bw, bh, cx, cy, innerR);
             }
 
-            if (filledCount == 1) {
-                sb.append(selectedRow);
+            if (filledRows.size() == 1) {
+                // Clear single selection
+                sb.append(filledRows.get(0));
+            } else if (filledRows.size() > 1) {
+                // CON #14: Multi-fill — pick the darkest bubble (lowest luminance = most ink)
+                int darkestRow = filledRows.get(0);
+                double darkestLuminance = rowLuminances[darkestRow];
+                for (int i = 1; i < filledRows.size(); i++) {
+                    int r = filledRows.get(i);
+                    if (rowLuminances[r] < darkestLuminance) {
+                        darkestLuminance = rowLuminances[r];
+                        darkestRow = r;
+                    }
+                }
+                sb.append(darkestRow);
+                Log.d(TAG, "Student ID col " + col + ": multi-fill resolved to " + darkestRow
+                        + " (luminance=" + String.format("%.1f", darkestLuminance) + ")");
             } else {
-                sb.append(" ");
+                // CON #14: No fill — use '_' instead of silent space
+                sb.append("_");
             }
         }
 

@@ -2,16 +2,18 @@ package com.mk.omrscanner;
 
 import android.content.Context;
 import android.content.SharedPreferences;
-import org.json.JSONArray;
-import org.json.JSONException;
-import org.json.JSONObject;
 import java.util.ArrayList;
 import java.util.List;
 
+/**
+ * Manages saved answer keys.
+ * CON #12: Now backed by Room database for scalability.
+ * Public API and AnswerKey model remain unchanged for backward compatibility.
+ * Selected key ID still uses SharedPreferences (it's a single value, not a collection).
+ */
 public class AnswerKeyManager {
 
     private static final String PREFS_NAME = "OMRScannerKeysPrefs";
-    private static final String KEY_SAVED_KEYS_JSON = "saved_keys_json";
     private static final String KEY_SELECTED_KEY_ID = "selected_key_id";
 
     public static int normalizeQuestionsCount(int questionsCount) {
@@ -80,76 +82,39 @@ public class AnswerKeyManager {
         }
     }
 
-    // Retrieve all saved answer keys
+    // Retrieve all saved answer keys (now via Room)
     public static List<AnswerKey> getSavedKeys(Context context) {
         List<AnswerKey> keysList = new ArrayList<>();
-        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-        String jsonString = prefs.getString(KEY_SAVED_KEYS_JSON, "[]");
-
         try {
-            JSONArray array = new JSONArray(jsonString);
-            for (int i = 0; i < array.length(); i++) {
-                JSONObject obj = array.getJSONObject(i);
-                int questionsCount = normalizeQuestionsCount(obj.optInt("questionsCount", 100));
-                AnswerKey key = new AnswerKey(
-                        obj.getString("id"),
-                        obj.getString("name"),
-                        questionsCount,
-                        columnsForQuestionCount(questionsCount),
-                        obj.optInt("idDigits", 6),
-                        obj.getString("answersJson"),
-                        obj.getString("incorrectPenalty"),
-                        obj.getString("multiMarkPenalty"),
-                        obj.getBoolean("customPointsActive"),
-                        obj.getBoolean("multiCorrectActive"),
-                        obj.optString("pointsJson", "[]")
-                );
-                keysList.add(normalizeKey(key));
+            AnswerKeyDao dao = AppDatabase.getInstance(context).answerKeyDao();
+            List<AnswerKeyEntity> entities = dao.getAll();
+            for (AnswerKeyEntity entity : entities) {
+                keysList.add(normalizeKey(entity.toLegacy()));
             }
-        } catch (JSONException e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
         return keysList;
     }
 
-    // Save or update an answer key
+    // Save or update an answer key (now via Room)
     public static void saveKey(Context context, AnswerKey keyToSave) {
         normalizeKey(keyToSave);
-        List<AnswerKey> currentKeys = getSavedKeys(context);
-        boolean isExisting = false;
-
-        // Check if updating an existing key
-        for (int i = 0; i < currentKeys.size(); i++) {
-            if (currentKeys.get(i).id.equals(keyToSave.id)) {
-                currentKeys.set(i, keyToSave);
-                isExisting = true;
-                break;
-            }
+        try {
+            AnswerKeyDao dao = AppDatabase.getInstance(context).answerKeyDao();
+            dao.insertOrUpdate(AnswerKeyEntity.fromLegacy(keyToSave));
+        } catch (Exception e) {
+            e.printStackTrace();
         }
-
-        // If new, add it
-        if (!isExisting) {
-            currentKeys.add(keyToSave);
-        }
-
-        // Serialize and save back
-        saveKeysList(context, currentKeys);
     }
 
-    // Delete an answer key by ID
+    // Delete an answer key by ID (now via Room)
     public static void deleteKey(Context context, String keyId) {
-        List<AnswerKey> currentKeys = getSavedKeys(context);
-        AnswerKey target = null;
-        for (AnswerKey key : currentKeys) {
-            if (key.id.equals(keyId)) {
-                target = key;
-                break;
-            }
-        }
-
-        if (target != null) {
-            currentKeys.remove(target);
-            saveKeysList(context, currentKeys);
+        try {
+            AnswerKeyDao dao = AppDatabase.getInstance(context).answerKeyDao();
+            dao.deleteById(keyId);
+        } catch (Exception e) {
+            e.printStackTrace();
         }
 
         // If deleted key was selected, reset selection
@@ -158,7 +123,7 @@ public class AnswerKeyManager {
         }
     }
 
-    // Set currently selected/active key ID
+    // Set currently selected/active key ID (still SharedPreferences — it's a single value)
     public static void setSelectedKeyId(Context context, String keyId) {
         SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
         prefs.edit().putString(KEY_SELECTED_KEY_ID, keyId).apply();
@@ -170,45 +135,20 @@ public class AnswerKeyManager {
         return prefs.getString(KEY_SELECTED_KEY_ID, "");
     }
 
-    // Get the active selected AnswerKey object
+    // Get the active selected AnswerKey object (now via Room)
     public static AnswerKey getSelectedKey(Context context) {
         String selectedId = getSelectedKeyId(context);
         if (selectedId.isEmpty()) return null;
 
-        List<AnswerKey> keys = getSavedKeys(context);
-        for (AnswerKey key : keys) {
-            if (key.id.equals(selectedId)) {
-                return key;
-            }
-        }
-        return null;
-    }
-
-    // Internal helper to serialize keys list
-    private static void saveKeysList(Context context, List<AnswerKey> keysList) {
-        JSONArray array = new JSONArray();
         try {
-            for (AnswerKey key : keysList) {
-                normalizeKey(key);
-                JSONObject obj = new JSONObject();
-                obj.put("id", key.id);
-                obj.put("name", key.name);
-                obj.put("questionsCount", key.questionsCount);
-                obj.put("columnsLayout", key.columnsLayout);
-                obj.put("idDigits", key.idDigits);
-                obj.put("answersJson", key.answersJson);
-                obj.put("incorrectPenalty", key.incorrectPenalty);
-                obj.put("multiMarkPenalty", key.multiMarkPenalty);
-                obj.put("customPointsActive", key.customPointsActive);
-                obj.put("multiCorrectActive", key.multiCorrectActive);
-                obj.put("pointsJson", key.pointsJson);
-                array.put(obj);
+            AnswerKeyDao dao = AppDatabase.getInstance(context).answerKeyDao();
+            AnswerKeyEntity entity = dao.getById(selectedId);
+            if (entity != null) {
+                return normalizeKey(entity.toLegacy());
             }
-        } catch (JSONException e) {
+        } catch (Exception e) {
             e.printStackTrace();
         }
-
-        SharedPreferences prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE);
-        prefs.edit().putString(KEY_SAVED_KEYS_JSON, array.toString()).apply();
+        return null;
     }
 }

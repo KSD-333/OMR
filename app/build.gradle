@@ -49,4 +49,8 @@ dependencies {
 
     // OpenCV for perspective transform, contour detection, adaptive thresholding
     implementation "org.opencv:opencv:4.10.0"
+
+    // Room database for structured data storage (CON #12)
+    implementation "androidx.room:room-runtime:2.6.1"
+    annotationProcessor "androidx.room:room-compiler:2.6.1"
 }
